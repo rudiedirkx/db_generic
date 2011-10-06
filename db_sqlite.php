@@ -1,6 +1,6 @@
 <?php
 
-require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'inc.cls.db_generic.php');
+require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'db_generic.php');
 
 class db_sqlite extends db_generic {
 
@@ -13,7 +13,7 @@ class db_sqlite extends db_generic {
 	}
 
 	static public function open( $file ) {
-		require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'inc.cls.db_sqlite3.php');
+		require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'db_sqlite3.php');
 
 		$db = new db_sqlite3($file);
 		if ( $db->connected() ) {

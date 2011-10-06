@@ -1,6 +1,6 @@
 <?php
 
-require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'inc.cls.db_sqlite.php');
+require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'db_sqlite.php');
 
 class db_sqlite3 extends db_sqlite {
 
