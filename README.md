@@ -10,3 +10,7 @@ Very simple, very flawed DBAL for
 Yes, SQLite 3 to the max!
 
 Used in (amongst many, many more (private) projects) https://github.com/rudiedirkx/series
+
+## TODO
+
+* Implement replaceholders (fixed num_args) with `?` in `update`, `select`, `count` etc
