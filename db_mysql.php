@@ -4,6 +4,16 @@ require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'db_generic.php');
 
 class db_mysql extends db_generic {
 
+	static public function open( $host, $user, $pass, $db ) {
+		if ( class_exists('mysqli') ) {
+			require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'db_mysqli.php');
+
+			return new db_mysqli($host, $user, $pass, $db);
+		}
+
+		return new self($host, $user, $pass, $db);
+	}
+
 	protected $dbCon = null;
 	protected $db = false;
 	public $error = '';
@@ -49,6 +59,63 @@ class db_mysql extends db_generic {
 
 	public function affected_rows() {
 		return mysql_affected_rows($this->dbCon);
+	}
+
+	public function table( $tableName, $definition = array() ) {
+		// existing table
+		$table = $this->fetch('EXPLAIN `'.$tableName.'`');
+
+		// create table
+		if ( $definition ) {
+			// table exists -> fail
+			if ( $table ) {
+				return false;
+			}
+
+			// table definition
+			if ( !isset($definition['columns']) ) {
+				$definition = array('columns' => $definition);
+			}
+
+			// create table sql
+			$sql = 'CREATE TABLE `'.$tableName.'` (' . "\n";
+			$first = true;
+			foreach ( $definition['columns'] AS $columnName => $details ) {
+				// the very simple columns: array( 'a', 'b', 'c' )
+				if ( is_int($columnName) ) {
+					$columnName = $details;
+					$details = array();
+				}
+
+				// if PK, forget the rest
+				if ( !empty($details['pk']) ) {
+					$type = 'INTEGER PRIMARY KEY AUTO_INCREMENT';
+					$notnull = '';
+					$constraint = '';
+				}
+				else {
+					// check special stuff
+					isset($details['unsigned']) && $details['type'] = 'INT';
+					$type = isset($details['type']) ? strtoupper(trim($details['type'])) : 'TEXT';
+					$notnull = isset($details['null']) ? ( $details['null'] ? '' : ' NOT' ) . ' NULL' : '';
+					$constraint = !empty($details['unsigned']) ? ' UNSIGNED' : '';
+				}
+
+				$comma = $first ? ' ' : ',';
+				$sql .= '  ' . $comma . '`'.$columnName.'` '.$type.$notnull.$constraint . "\n";
+
+				$first = false;
+			}
+			$sql .= ');';
+
+			// execute
+			return (bool)$this->query($sql);
+		}
+
+		// table exists -> success
+		if ( $table ) {
+			return $table[0];
+		}
 	}
 
 	public function query( $f_szSqlQuery ) {

@@ -1,8 +1,8 @@
 <?php
 
-require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'db_generic.php');
+require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'db_mysql.php');
 
-class db_mysqli extends db_generic {
+class db_mysqli extends db_mysql {
 
 	public function close() {
 		return $this->dbCon->close();

@@ -175,7 +175,7 @@ class db_sqlite extends db_generic {
 			}
 
 			// create table sql
-			$sql = 'CREATE TABLE "'.$tableName.'" ( ';
+			$sql = 'CREATE TABLE "'.$tableName.'" (' . "\n";
 			$first = true;
 			foreach ( $definition['columns'] AS $columnName => $details ) {
 				// the very simple columns: array( 'a', 'b', 'c' )
@@ -192,17 +192,18 @@ class db_sqlite extends db_generic {
 				}
 				else {
 					// check special stuff
-					$type = isset($details['type']) ? trim($details['type']) : 'TEXT';
+					isset($details['unsigned']) && $details['type'] = 'INT';
+					$type = isset($details['type']) ? strtoupper(trim($details['type'])) : 'TEXT';
 					$notnull = isset($details['null']) ? ( $details['null'] ? '' : ' NOT' ) . ' NULL' : '';
-					$constraint = isset($details['constraint']) ? ' CHECK ('.$details['constraint'].')' : '';
+					$constraint = isset($details['unsigned']) ? ' CHECK ("'.$columnName.'" >= 0)' : '';
 				}
 
-				$comma = $first ? '' : ', ';
-				$sql .= $comma . '"'.$columnName.'" '.$type.$notnull.$constraint;
+				$comma = $first ? ' ' : ',';
+				$sql .= '  ' . $comma . '"'.$columnName.'" '.$type.$notnull.$constraint . "\n";
 
 				$first = false;
 			}
-			$sql .= ' );';
+			$sql .= ');';
 
 			// execute
 			return (bool)$this->query($sql);
