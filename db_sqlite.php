@@ -189,17 +189,19 @@ class db_sqlite extends db_generic {
 					$type = 'INTEGER PRIMARY KEY AUTOINCREMENT';
 					$notnull = '';
 					$constraint = '';
+					$default = '';
 				}
 				else {
 					// check special stuff
 					isset($details['unsigned']) && $details['type'] = 'INT';
 					$type = isset($details['type']) ? strtoupper(trim($details['type'])) : 'TEXT';
 					$notnull = isset($details['null']) ? ( $details['null'] ? '' : ' NOT' ) . ' NULL' : '';
-					$constraint = isset($details['unsigned']) ? ' CHECK ("'.$columnName.'" >= 0)' : '';
+					$constraint = !empty($details['unsigned']) ? ' CHECK ("'.$columnName.'" >= 0)' : '';
+					$default = isset($details['default']) ? ' DEFAULT '.$this->escapeAndQuote($details['default']) : '';
 				}
 
 				$comma = $first ? ' ' : ',';
-				$sql .= '  ' . $comma . '"'.$columnName.'" '.$type.$notnull.$constraint . "\n";
+				$sql .= '  ' . $comma . '"'.$columnName.'" '.$type.$notnull.$default.$constraint . "\n";
 
 				$first = false;
 			}

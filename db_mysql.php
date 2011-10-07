@@ -92,6 +92,7 @@ class db_mysql extends db_generic {
 					$type = 'INTEGER PRIMARY KEY AUTO_INCREMENT';
 					$notnull = '';
 					$constraint = '';
+					$default = '';
 				}
 				else {
 					// check special stuff
@@ -99,6 +100,7 @@ class db_mysql extends db_generic {
 					$type = isset($details['type']) ? strtoupper(trim($details['type'])) : 'TEXT';
 					$notnull = isset($details['null']) ? ( $details['null'] ? '' : ' NOT' ) . ' NULL' : '';
 					$constraint = !empty($details['unsigned']) ? ' UNSIGNED' : '';
+					$default = isset($details['default']) ? ' DEFAULT '.$this->escapeAndQuote($details['default']) : '';
 				}
 
 				$comma = $first ? ' ' : ',';
