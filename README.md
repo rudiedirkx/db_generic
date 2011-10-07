@@ -14,3 +14,5 @@ Used in (amongst many, many more (private) projects) https://github.com/rudiedir
 ## TODO
 
 * Implement replaceholders (fixed num_args) with `?` in `update`, `select`, `count` etc
+* Replace MySQL with MySQLi and SQLite with SQLite3 (and PDO only)
+* Enforce UTF-8 on connect, always
