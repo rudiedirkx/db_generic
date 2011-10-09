@@ -4,13 +4,7 @@ require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'db_generic.php');
 
 class db_sqlite extends db_generic {
 
-	static function fn_if( $f_bool, $f_yes, $f_no ) {
-		return $f_bool ? $f_yes : $f_no;
-	}
-
-	static function fn_rand() {
-		return rand() / getrandmax();
-	}
+	public $affected = 0;
 
 	static public function open( $args ) {
 		$db = new self($args);
@@ -19,183 +13,88 @@ class db_sqlite extends db_generic {
 		}
 	}
 
-	protected $dbCon = null;
-	public $error = '';
-	public $errno = 0;
-	public $num_queries = 0;
-	public $m_iAffectedRows = 0;
-	public $last_query = '';
-
-	public function begin() {
-		return $this->dbCon->beginTransaction();
-	}
-	public function commit() {
-		return $this->dbCon->commit();
-	}
-	public function rollback() {
-		return $this->dbCon->rollBack();
-	}
-
 	protected function __construct( $args ) {
+		if ( isset($args['exceptions']) ) {
+			$this->throwExceptions = (bool)$args['exceptions'];
+		}
+
 		try {
-			$this->dbCon = new PDO('sqlite:'.$args['database']);
-			$this->dbCon->sqliteCreateFunction('IF', array('db_sqlite', 'fn_if'));
-			$this->dbCon->sqliteCreateFunction('RAND', array('db_sqlite', 'fn_rand'));
+			$this->db = new PDO('sqlite:'.$args['database']);
+			$this->db->sqliteCreateFunction('IF', array('db_generic', 'fn_if'));
+			$this->db->sqliteCreateFunction('RAND', array('db_generic', 'fn_rand'));
+			$this->db->sqliteCreateFunction('CONCAT', array('db_generic', 'fn_concat'));
 		}
 		catch ( PDOException $ex ) {
-			$this->saveError($ex->getMessage(), $ex->getCode());
-		}
-	}
-
-	public function saveError( $error = true, $errno = 0 ) {
-		if ( is_string($error) && $errno ) {
-			
-		}
-		else if ( $error ) {
-			$error = $this->dbCon->errorInfo();
-			$this->errno = $error[1];
-			$this->error = $error[2];
-			$this->m_iAffectedRows = 0;
-		}
-		else {
-			$this->errno = 0;
-			$this->error = '';
+			//$this->saveError($ex->getMessage(), $ex->getCode());
 		}
 	}
 
 	public function connected() {
-		return $this->dbCon && false !== $this->dbCon->query('SELECT 1 FROM sqlite_master');
+		return is_object(@$this->query('SELECT COUNT(1) FROM sqlite_master'));
 	}
 
-	public function escape($v) {
-		return str_replace("'", "''", (string)$v);
-	}
 
-	public function insert_id() {
-		return $this->dbCon->lastInsertId();
-	}
+	public function query( $query ) {
+		$this->queries[] = $query;
 
-	public function affected_rows() {
-		return $this->m_iAffectedRows;
-	}
-
-	public function query( $f_szSqlQuery ) {
-		$this->num_queries++;
-		$this->last_query = $f_szSqlQuery;
-		if ( false === ($r = $this->dbCon->query($f_szSqlQuery)) ) {
-			$this->saveError(true);
-			return false;
+		try {
+			$q = @$this->db->query($query);
+			if ( !$q ) {
+				return $this->except($query.' -> '.$this->error());
+			}
+		} catch ( PDOException $ex ) {
+			return $this->except($query.' -> '.$ex->getMessage());
 		}
-		$this->saveError(false);
-		return $r;
+
+		return $q;
 	}
 
 	public function execute( $query ) {
-		$affected = $this->dbCon->exec($query);
+		$this->queries[] = $query;
 
-		if ( false !== $affected ) {
-			$this->m_iAffectedRows = $affected;
-			return true;
-		}
-
-		return false;
-	}
-
-	public function fetch( $query, $mixed = null ) {
-		// default options
-		$class = false;
-		$justFirst = false;
-		$params = array();
-
-		// unravel options
-		if ( is_array($mixed) ) {
-			if ( is_int(key($mixed)) ) {
-				$params = $mixed;
+		try {
+			$q = @$this->db->exec($query);
+			if ( !$q ) {
+				throw new DatabaseException($query.' -> '.$this->error());
 			}
-			else {
-				isset($mixed['class']) && $class = $mixed['class'];
-				isset($mixed['first']) && $justFirst = $mixed['first'];
-				isset($mixed['params']) && $params = (array)$mixed['params'];
-			}
-		}
-		else if ( is_bool($mixed) ) {
-			$justFirst = $mixed;
-		}
-		else if ( is_string($mixed) ) {
-			$class = $mixed;
+		} catch ( PDOException $ex ) {
+			return $this->except($query.' -> '.$ex->getMessage());
 		}
 
-		// apply params
-		if ( $params ) {
-			$query = $this->replaceholders($query, $params);
-		}
+		$this->affected = $q;
 
-		$result = $this->query($query);
-
-		if ( $justFirst ) {
-			if ( $class ) {
-				return $result->fetchObject($class, array(true));
-			}
-			return $result->fetchObject();
-		}
-
-		if ( $class ) {
-			return $result->fetchAll(PDO::FETCH_CLASS, $class, array(true));
-		}
-
-		return $result->fetchAll(PDO::FETCH_OBJ);
+		return true;
 	}
 
-	/*public function fetch($f_szSqlQuery) {
-		$r = $this->query($f_szSqlQuery);
-		if ( !$r ) {
-			return false;
-		}
-		return $r->fetchAll(PDO::FETCH_ASSOC);
-	}*/
-
-	public function fetch_fields($f_szSqlQuery) {
-		$r = $this->query($f_szSqlQuery);
-		if ( !$r ) {
-			return false;
-		}
-		$a = array();
-		while ( $l = $r->fetch(PDO::FETCH_NUM) ) {
-			$a[$l[0]] = $l[1];
-		}
-		return $a;
+	public function result( $query, $targetClass = '' ) {
+		$resultClass = __CLASS__.'_result';
+		return $resultClass::make($this->query($query), $targetClass, $this);
 	}
 
-	public function fetch_one( $query ) {
-		$r = $this->query($query);
-		if ( !$r ) {
-			return false;
-		}
-		return $r->fetchColumn(0);
+	public function error( $error = null ) {
+		$err = $this->db->errorInfo();
+		return $err[2];
 	}
 
-	public function count_rows($f_szSqlQuery) {
-		$r = $this->query($f_szSqlQuery);
-		if ( !$r ) {
-			return false;
-		}
-		return count($r->fetchAll());
+	public function errno( $errno = null ) {
+		return $this->db->errorCode();
 	}
 
-	public function fetch_by_field( $query, $field ) {
-		$result = $this->fetch($query);
+	public function affected_rows() {
+		return $this->affected;
+	}
 
-		$a = array();
-		foreach ( $result AS $obj ) {
-			$a[$obj->{$field}] = $obj;
-		}
+	public function insert_id() {
+		return $this->db->lastInsertId();
+	}
 
-		return $a;
+	public function escapeValue( $value ) {
+		return addslashes((string)$value);
 	}
 
 	public function table( $tableName, $definition = array() ) {
 		// existing table
-		$table = $this->select('sqlite_master', 'tbl_name = '.$this->escapeAndQuote($tableName));
+		$table = $this->select('sqlite_master', 'tbl_name = '.$this->escapeAndQuoteValue($tableName));
 
 		// create table
 		if ( $definition ) {
@@ -252,6 +151,43 @@ class db_sqlite extends db_generic {
 		}
 	}
 
-} // END Class db_sqlite3
+}
+
+
+
+class db_sqlite_result extends db_generic_result {
+
+	static public function make( $result, $class = '', $db = null ) {
+		return false !== $result ? new self($result, $class, $db) : false;
+	}
+
+	public $rows = array();
+	public $index = 0;
+
+	public function singleResult() {
+		return $this->result->fetchColumn(0);
+	}
+
+	public function nextObject( $class = '', $args = array() ) {
+		$class or $class = 'stdClass';
+
+		if ( !$this->rows ) {
+			$this->rows = $this->result->fetchAll(PDO::FETCH_CLASS, $class, $args);
+		}
+
+		if ( isset($this->rows[$this->index]) ) {
+			return $this->rows[$this->index++];
+		}
+	}
+
+	public function nextAssocArray() {
+		return $this->result->fetch(PDO::FETCH_ASSOC);
+	}
+
+	public function nextNumericArray() {
+		return $this->result->fetch(PDO::FETCH_NUM);
+	}
+
+}
 
 
