@@ -55,7 +55,7 @@ class db_sqlite extends db_generic {
 		try {
 			$q = @$this->db->exec($query);
 			if ( !$q ) {
-				throw new DatabaseException($query.' -> '.$this->error());
+				return $this->except($query.' -> '.$this->error());
 			}
 		} catch ( PDOException $ex ) {
 			return $this->except($query.' -> '.$ex->getMessage());
