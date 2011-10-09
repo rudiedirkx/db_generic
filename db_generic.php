@@ -3,7 +3,7 @@
 class db_exception extends Exception {
 	public $query = '';
 	public function __construct( $error = '', $errno = -1, $previous = null, $options = array() ) {
-		parent::__construct($error = '', $errno = -1, $previous = null);
+		parent::__construct($error, $errno, $previous);
 		if ( isset($options['query']) ) {
 			$this->query = $options['query'];
 		}

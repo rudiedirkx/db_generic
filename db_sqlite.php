@@ -23,6 +23,8 @@ class db_sqlite extends db_generic {
 			$this->db->sqliteCreateFunction('IF', array('db_generic', 'fn_if'));
 			$this->db->sqliteCreateFunction('RAND', array('db_generic', 'fn_rand'));
 			$this->db->sqliteCreateFunction('CONCAT', array('db_generic', 'fn_concat'));
+			$this->db->sqliteCreateFunction('FLOOR', 'floor');
+			$this->db->sqliteCreateFunction('CEIL', 'ceil');
 		}
 		catch ( PDOException $ex ) {
 			//$this->saveError($ex->getMessage(), $ex->getCode());
