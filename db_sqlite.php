@@ -34,16 +34,29 @@ class db_sqlite extends db_generic {
 	}
 
 
+	public function begin() {
+		return $this->db->beginTransaction();
+	}
+
+	public function commit() {
+		return $this->db->commit();
+	}
+
+	public function rollback() {
+		return $this->db->rollBack();
+	}
+
+
 	public function query( $query ) {
 		$this->queries[] = $query;
 
 		try {
 			$q = @$this->db->query($query);
 			if ( !$q ) {
-				return $this->except($query.' -> '.$this->error());
+				return $this->except($query, $this->error());
 			}
 		} catch ( PDOException $ex ) {
-			return $this->except($query.' -> '.$ex->getMessage());
+			return $this->except($query, $ex->getMessage());
 		}
 
 		return $q;
@@ -53,15 +66,15 @@ class db_sqlite extends db_generic {
 		$this->queries[] = $query;
 
 		try {
-			$q = @$this->db->exec($query);
-			if ( !$q ) {
-				return $this->except($query.' -> '.$this->error());
+			$r = @$this->db->exec($query);
+			if ( false === $r ) {
+				return $this->except($query, $this->error());
 			}
 		} catch ( PDOException $ex ) {
-			return $this->except($query.' -> '.$ex->getMessage());
+			return $this->except($query, $ex->getMessage());
 		}
 
-		$this->affected = $q;
+		$this->affected = $r;
 
 		return true;
 	}
@@ -89,7 +102,21 @@ class db_sqlite extends db_generic {
 	}
 
 	public function escapeValue( $value ) {
-		return addslashes((string)$value);
+		return str_replace("'", "''", (string)$value);
+	}
+
+	public function quoteValue( $value ) {
+		return "'".$value."'";
+	}
+
+	public function escapeAndQuoteValue( $value ) {
+		if ( null === $value ) {
+			return 'NULL';
+		}
+		if ( is_bool($value) ) {
+			$value = (int)$value;
+		}
+		return $this->db->quote($value);
 	}
 
 	public function table( $tableName, $definition = array() ) {

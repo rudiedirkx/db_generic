@@ -1,6 +1,14 @@
 <?php
 
-class db_exception extends Exception {}
+class db_exception extends Exception {
+	public $query = '';
+	public function __construct( $error = '', $errno = -1, $previous = null, $options = array() ) {
+		parent::__construct($error = '', $errno = -1, $previous = null);
+		if ( isset($options['query']) ) {
+			$this->query = $options['query'];
+		}
+	}
+}
 
 abstract class db_generic {
 
@@ -67,24 +75,27 @@ abstract class db_generic {
 		return $this->quoteColumn($this->escapeColumn($column));
 	}
 
-	public function except( $msg = null ) {
+	public function except( $query, $error, $errno = -1 ) {
 		if ( $this->throwExceptions ) {
-			$msg or $msg = $this->error();
-			throw new db_exception($msg);
+			throw new db_exception($error, $errno, null, array('query' => $query));
 		}
+
+#		$this->error = $error;
+#		$this->errno = $errno;
+
 		return false;
 	}
 
-	static public $paramPlaceholder = '?';
+	static public $replaceholder = '?';
 
 	public function replaceholders( $conditions, $params ) {
 		$conditions = $this->stringifyConditions($conditions);
 
-		if ( array() === $params || null === $params ) {
+		if ( array() === $params || null === $params || '' === $params ) {
 			return $conditions;
 		}
 
-		$ph = static::$paramPlaceholder;
+		$ph = static::$replaceholder;
 		$offset = 0;
 		foreach ( (array)$params AS $param ) {
 			$pos = strpos($conditions, $ph, $offset);
@@ -97,6 +108,28 @@ abstract class db_generic {
 		}
 
 		return $conditions;
+	}
+
+	abstract public function begin();
+	abstract public function commit();
+	abstract public function rollback();
+	public function transaction( $transaction, &$context = array() ) {
+		if ( is_callable($transaction) ) {
+			try {
+				$this->begin();
+				$context['result'] = call_user_func($transaction, $this, $context);
+				$this->commit();
+
+				return true;
+			}
+			catch ( Exception $ex ) {
+				$this->rollback(); // I don't think an explicit rollback is necessary...
+
+				$context['exception'] = $ex;
+
+				return false;
+			}
+		}
 	}
 
 	public function fetch( $query, $mixed = null ) {
@@ -226,7 +259,8 @@ abstract class db_generic {
 	public function select( $table, $conditions, $params = array(), $justFirst = false ) {
 		$conditions = $this->replaceholders($conditions, $params);
 		$query = 'SELECT * FROM '.$this->escapeAndQuoteTable($table).' WHERE '.$conditions;
-		return $this->fetch($query, (bool)$justFirst);
+//var_dump($query); exit;
+		return $this->fetch($query, true === $justFirst);
 	}
 
 	public function select_by_field( $table, $field, $conditions, $params = array() ) {
@@ -274,6 +308,7 @@ abstract class db_generic {
 	public function delete( $table, $conditions, $params = array() ) {
 		$conditions = $this->replaceholders($conditions, $params);
 		$sql = 'DELETE FROM '.$this->escapeAndQuoteTable($table).' WHERE '.$conditions.';';
+//var_dump($sql); exit;
 		return $this->execute($sql);
 	}
 
