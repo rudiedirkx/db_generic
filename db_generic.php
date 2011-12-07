@@ -12,6 +12,11 @@ class db_exception extends Exception {
 
 abstract class db_generic {
 
+	static function option( $options, $name, $alternative = null ) {
+		$options = (array)$options;
+		return array_key_exists($name, $options) ? $options[$name] : $alternative;
+	}
+
 	static function fn_if( $f_bool, $f_yes = 1, $f_no = 0 ) {
 		return $f_bool ? $f_yes : $f_no;
 	}
@@ -32,7 +37,7 @@ abstract class db_generic {
 #	public $errno = 0;
 
 	abstract static public function open( $args );
-	abstract protected function __construct( $args );
+	abstract public function __construct( $args );
 	abstract public function connected();
 
 	abstract public function escapeValue( $value );
@@ -45,9 +50,11 @@ abstract class db_generic {
 		if ( null === $value ) {
 			return 'NULL';
 		}
+
 		if ( is_bool($value) ) {
-			return (int)$value;
+			$value = (int)$value;
 		}
+
 		return $this->quoteValue($this->escapeValue($value));
 	}
 
@@ -187,8 +194,8 @@ abstract class db_generic {
 
 	abstract public function query( $query );
 	abstract public function execute( $query );
-	abstract public function error( $error = null );
-	abstract public function errno( $errno = null );
+	abstract public function error();
+	abstract public function errno();
 	abstract public function affected_rows();
 	abstract public function insert_id();
 
@@ -369,6 +376,8 @@ abstract class db_generic {
 
 
 abstract class db_generic_result {
+
+	static public $return_object_class = 'stdClass';
 
 	abstract static public function make( $result, $class = '' , $db = null );
 

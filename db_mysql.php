@@ -4,107 +4,186 @@ require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'db_generic.php');
 
 class db_mysql extends db_generic {
 
-	public function close() {
-		return $this->dbCon->close();
-	}
-
-	protected $dbCon = null;
-	public $error = '';
-	public $errno = 0;
-	public $num_queries = 0;
-	public $queries = array();
-
-	protected function __construct( $f_szHost, $f_szUser = '', $f_szPass = '', $f_szDb = '' ) {
-		$this->dbCon = new mysqli($f_szHost, $f_szUser, $f_szPass, $f_szDb);
-	}
-
-	public function saveError() {
-		if ( $this->connected() ) {
-			$this->error = $this->dbCon->error;
-			$this->errno = $this->dbCon->errno;
+	static public function open( $args ) {
+		$db = new self($args);
+		if ( $db->connected() ) {
+			return $db;
 		}
-		else {
-			$this->error = mysqli_connect_error();
-			$this->errno = mysqli_connect_errno();
+	}
+
+	public function __construct( $args ) {
+		if ( isset($args['exceptions']) ) {
+			$this->throwExceptions = (bool)$args['exceptions'];
+		}
+
+		$host = self::option($args, 'host', ini_get('mysqli.default_host'));
+		$user = self::option($args, 'user', ini_get('mysqli.default_user'));
+		$pass = self::option($args, 'pass', ini_get('mysqli.default_pw'));
+		$db = self::option($args, 'db', '');
+		$port = self::option($args, 'port', ini_get('mysqli.default_port'));
+
+		try {
+			$this->db = new mysqli($host, $user, $pass, $db, $port);
+		}
+		catch ( PDOException $ex ) {
+			//$this->saveError($ex->getMessage(), $ex->getCode());
 		}
 	}
 
 	public function connected() {
-		return (is_object($this->dbCon) && 0 === $this->dbCon->connect_errno);
+		return $this->db && is_object(@$this->query('SELECT USER()'));
 	}
 
-	public function escape($v) {
-		return $this->dbCon->real_escape_string($v);
+
+	public function begin() {
+		return $this->db->execute('BEGIN');
 	}
 
-	public function insert_id() {
-		return $this->dbCon->insert_id;
+	public function commit() {
+		return $this->db->execute('COMMIT');
+	}
+
+	public function rollback() {
+		return $this->db->execute('ROLLBACK');
+	}
+
+
+	public function query( $query ) {
+		$this->queries[] = $query;
+
+		try {
+			$q = @$this->db->query($query);
+			if ( !$q ) {
+				return $this->except($query, $this->error());
+			}
+		} catch ( Exception $ex ) {
+			return $this->except($query, $ex->getMessage());
+		}
+
+		return $q;
+	}
+
+	public function execute( $query ) {
+		$this->queries[] = $query;
+
+		try {
+			$r = @$this->db->exec($query);
+			if ( false === $r ) {
+				return $this->except($query, $this->error());
+			}
+		} catch ( PDOException $ex ) {
+			return $this->except($query, $ex->getMessage());
+		}
+
+		$this->affected = $r;
+
+		return true;
+	}
+
+	public function result( $query, $targetClass = '' ) {
+		$resultClass = __CLASS__.'_result';
+		return $resultClass::make($this->query($query), $targetClass, $this);
+	}
+
+	public function error() {
+		return $this->db->error;
+	}
+
+	public function errno() {
+		return $this->db->errno;
 	}
 
 	public function affected_rows() {
-		return $this->dbCon->affected_rows;
+		return $this->affected;
 	}
 
-	public function query( $f_szSqlQuery ) {
-		$r = $this->dbCon->query($f_szSqlQuery);
-		$this->error = $r ? '' : $this->dbCon->error;
-		$this->errno = $r ? 0 : $this->dbCon->errno;
-		$this->num_queries++;
-		return $r;
+	public function insert_id() {
+		return $this->db->lastInsertId();
 	}
 
-	public function fetch($f_szSqlQuery) {
-		$r = $this->query($f_szSqlQuery);
-		if ( !is_object($r) ) {
-			return false;
-		}
-		$a = array();
-		while ( $l = $r->fetch_assoc() ) {
-			$a[] = $l;
-		}
-		return $a;
+	public function escapeValue( $value ) {
+		return $this->db->real_escape_string((string)$value);
 	}
 
-	public function fetch_fields($f_szSqlQuery) {
-		$r = $this->query($f_szSqlQuery);
-		if ( !is_object($r) ) {
-			return false;
+	public function table( $tableName, $definition = array() ) {
+		// existing table
+		try {
+			$table = $this->fetch('EXPLAIN '.$this->escapeAndQuoteTable($tableName));
 		}
-		$a = array();
-		while ( $l = $r->fetch_row() ) {
-			$a[$l[0]] = $l[1];
+		catch ( Exception $ex ) {
+			$table = false;
 		}
-		return $a;
+
+		// create table
+		if ( $definition ) {
+			// table exists -> fail
+			if ( $table ) {
+				return false;
+			}
+
+			// table definition
+			if ( !isset($definition['columns']) ) {
+				$definition = array('columns' => $definition);
+			}
+
+			// create table sql
+			$sql = 'CREATE TABLE `'.$tableName.'` (' . "\n";
+			$first = true;
+			foreach ( $definition['columns'] AS $columnName => $details ) {
+				// do stuff here
+
+				$comma = $first ? ' ' : ',';
+//				$sql .= '  ' . $comma . '"'.$columnName.'" '.$type.$notnull.$default.$constraint . "\n";
+
+				$first = false;
+			}
+			$sql .= ');';
+
+			// execute
+			return false && $this->execute($sql);
+		}
+
+		// table exists -> success
+		if ( $table ) {
+			return $table;
+		}
 	}
 
-	public function select_one($tbl, $field, $where = '') {
-		$r = $this->query('SELECT '.$field.' FROM '.$tbl.( $where ? ' WHERE '.$where : '' ).' LIMIT 1;');
-		if ( !is_object($r) || 0 >= $r->num_rows ) {
-			return false;
-		}
-		return $a = current($r->fetch_row());
+}
+
+
+
+class db_mysql_result extends db_generic_result {
+
+	static public function make( $result, $class = '', $db = null ) {
+		return false !== $result ? new self($result, $class, $db) : false;
 	}
 
-	public function count_rows($f_szSqlQuery) {
-		$r = $this->query($f_szSqlQuery);
-		if ( !$r ) {
-			return false;
-		}
-		return $r->num_rows;
+	public function singleResult() {
+		$row = $this->result->fetch_row();
+		return $row ? $row[0] : false;
 	}
 
-	public function select_by_field($tbl, $field, $where = '') {
-		$r = $this->query('SELECT * FROM '.$tbl.( $where ? ' WHERE '.$where : '' ).';');
-		if ( !is_object($r) ) {
-			return false;
+	public function nextObject( $class = '', $args = array() ) {
+		$class or $class = self::$return_object_class;
+
+		method_exists($class, '__construct') or $args = array();
+
+		if ( $args ) {
+			return $this->result->fetch_object($class, $args);
 		}
-		$a = array();
-		while ( $l = $r->fetch_assoc() ) {
-			$a[$l[$field]] = $l;
-		}
-		return $a;
+
+		return $this->result->fetch_object($class);
 	}
 
-} // END Class db_mysqli
+	public function nextAssocArray() {
+		return $this->result->fetch_assoc();
+	}
 
-?>
+	public function nextNumericArray() {
+		return $this->result->fetch_row();
+	}
+
+}
+
+

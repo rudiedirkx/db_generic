@@ -4,8 +4,6 @@ require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'db_generic.php');
 
 class db_sqlite extends db_generic {
 
-	public $affected = 0;
-
 	static public function open( $args ) {
 		$db = new self($args);
 		if ( $db->connected() ) {
@@ -13,7 +11,9 @@ class db_sqlite extends db_generic {
 		}
 	}
 
-	protected function __construct( $args ) {
+	public $affected = 0;
+
+	public function __construct( $args ) {
 		if ( isset($args['exceptions']) ) {
 			$this->throwExceptions = (bool)$args['exceptions'];
 		}
@@ -32,7 +32,7 @@ class db_sqlite extends db_generic {
 	}
 
 	public function connected() {
-		return is_object(@$this->query('SELECT COUNT(1) FROM sqlite_master'));
+		return $this->db && is_object(@$this->query('SELECT COUNT(1) FROM sqlite_master'));
 	}
 
 
@@ -107,20 +107,6 @@ class db_sqlite extends db_generic {
 		return str_replace("'", "''", (string)$value);
 	}
 
-	public function quoteValue( $value ) {
-		return "'".$value."'";
-	}
-
-	public function escapeAndQuoteValue( $value ) {
-		if ( null === $value ) {
-			return 'NULL';
-		}
-		if ( is_bool($value) ) {
-			$value = (int)$value;
-		}
-		return $this->db->quote($value);
-	}
-
 	public function table( $tableName, $definition = array() ) {
 		// existing table
 		$table = $this->select('sqlite_master', 'tbl_name = '.$this->escapeAndQuoteValue($tableName));
@@ -171,7 +157,7 @@ class db_sqlite extends db_generic {
 			$sql .= ');';
 
 			// execute
-			return (bool)$this->query($sql);
+			return $this->execute($sql);
 		}
 
 		// table exists -> success
