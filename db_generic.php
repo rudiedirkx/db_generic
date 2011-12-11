@@ -284,8 +284,9 @@ abstract class db_generic {
 		if ( !is_string($fields) ) {
 			$fields = implode(', ', array_map(array($this, 'escapeAndQuoteColumn'), (array)$fields));
 		}
+		$conditions = $this->replaceholders($conditions, $params);
 		$query = 'SELECT '.$fields.' FROM '.$this->escapeAndQuoteTable($table).' WHERE '.$conditions;
-		return $this->fetchFieldsAssoc($query);
+		return $this->fetch_fields_assoc($query);
 	}
 
 	public function select_fields_numeric( $table, $field, $conditions, $params = array() ) {
