@@ -81,11 +81,6 @@ class db_sqlite extends db_generic {
 		return true;
 	}
 
-	public function result( $query, $targetClass = '' ) {
-		$resultClass = __CLASS__.'_result';
-		return $resultClass::make($this->query($query), $targetClass, $this);
-	}
-
 	public function error( $error = null ) {
 		$err = $this->db->errorInfo();
 		return $err[2];
@@ -107,9 +102,20 @@ class db_sqlite extends db_generic {
 		return str_replace("'", "''", (string)$value);
 	}
 
+	public function tables() {
+		$query = $this->select('sqlite_master', array('type' => 'table'));
+
+		$tables = array();
+		foreach ( $query AS &$table ) {
+			$tables[$table->name] = $table;
+		}
+
+		return $tables;
+	}
+
 	public function table( $tableName, $definition = array() ) {
 		// existing table
-		$table = $this->select('sqlite_master', 'tbl_name = '.$this->escapeAndQuoteValue($tableName));
+		$table = $this->select('sqlite_master', array('tbl_name' => $tableName));
 
 		// create table
 		if ( $definition ) {
@@ -172,36 +178,29 @@ class db_sqlite extends db_generic {
 
 class db_sqlite_result extends db_generic_result {
 
-	static public function make( $result, $class = '', $db = null ) {
-		return false !== $result ? new self($result, $class, $db) : false;
+	static public function make( $db, $result, $options = array() ) {
+		return false !== $result ? new self($db, $result, $options) : false;
 	}
 
-	public $rows = array();
-	public $index = 0;
 
-	public function singleResult() {
+	public function singleValue( $args = array() ) {
 		return $this->result->fetchColumn(0);
 	}
 
-	public function nextObject( $class = '', $args = array() ) {
-		$class or $class = 'stdClass';
 
-		if ( !$this->rows ) {
-			$this->rows = $this->result->fetchAll(PDO::FETCH_CLASS, $class, $args);
-		}
-
-		if ( isset($this->rows[$this->index]) ) {
-			return $this->rows[$this->index++];
-		}
+	public function nextObject( $args = array() ) {
+		return $this->result->fetchObject($this->class);
 	}
 
-	public function nextAssocArray() {
+
+	/*public function nextAssocArray() {
 		return $this->result->fetch(PDO::FETCH_ASSOC);
 	}
 
+
 	public function nextNumericArray() {
 		return $this->result->fetch(PDO::FETCH_NUM);
-	}
+	}*/
 
 }
 

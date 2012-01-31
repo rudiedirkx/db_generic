@@ -46,6 +46,10 @@ abstract class db_generic {
 		return "'".$value."'";
 	}
 
+	public function escapeAndQuote( $value ) {
+		return $this->escapeAndQuoteValue($value);
+	}
+
 	public function escapeAndQuoteValue( $value ) {
 		if ( null === $value ) {
 			return 'NULL';
@@ -146,50 +150,55 @@ abstract class db_generic {
 		$params = array();
 
 		// unravel options
+		// Array -> Options or Params
 		if ( is_array($mixed) ) {
+			// Params
 			if ( is_int(key($mixed)) ) {
 				$params = $mixed;
 			}
+			// Options
 			else {
 				isset($mixed['class']) && $class = $mixed['class'];
 				isset($mixed['first']) && $justFirst = $mixed['first'];
 				isset($mixed['params']) && $params = (array)$mixed['params'];
 			}
 		}
+		// Bool -> JustFirst
 		else if ( is_bool($mixed) ) {
 			$justFirst = $mixed;
 		}
+		// String -> Class
 		else if ( is_string($mixed) ) {
 			$class = $mixed;
 		}
+
+		// compact options for transfer
+		$options = compact('query', 'class', 'justFirst', 'params');
 
 		// apply params
 		if ( $params ) {
 			$query = $this->replaceholders($query, $params);
 		}
 
-		$result = $this->result($query);
+		$result = $this->result($query, $options);
+
+		// no results
 		if ( false === $result ) {
 			return false;
 		}
 
+		// one result or null
 		if ( $justFirst ) {
-			if ( $class ) {
-				return $result->nextObject($class, array(true));
-			}
-			return $result->nextObject();
+			return $result->next();
 		}
 
-		if ( $class ) {
-			return $result->allObjects($class, array(true));
-		}
-
-		return $result->allObjects();
+		// iterator
+		return $result;
 	}
 
-	public function result( $query, $targetClass = '' ) {
-		$resultClass = get_class($this).'Result';
-		return $resultClass::make($this->query($query), $targetClass, $this);
+	public function result( $query, $options = array() ) {
+		$resultClass = get_class($this).'_result';
+		return $resultClass::make($this, $this->query($query), $options);
 	}
 
 	abstract public function query( $query );
@@ -263,11 +272,10 @@ abstract class db_generic {
 
 	static protected $aliasDelim = '.'; // [table] "." [column]
 
-	public function select( $table, $conditions, $params = array(), $justFirst = false ) {
+	public function select( $table, $conditions, $params = array(), $options = null ) {
 		$conditions = $this->replaceholders($conditions, $params);
 		$query = 'SELECT * FROM '.$this->escapeAndQuoteTable($table).' WHERE '.$conditions;
-//var_dump($query); exit;
-		return $this->fetch($query, true === $justFirst);
+		return $this->fetch($query, $options);
 	}
 
 	public function select_by_field( $table, $field, $conditions, $params = array() ) {
@@ -298,6 +306,18 @@ abstract class db_generic {
 	public function count( $table, $conditions = '', $params = array() ) {
 		$conditions = $this->replaceholders($conditions, $params) ?: '1';
 		$r = (int)$this->select_one($table, 'count(1)', $conditions);
+		return $r;
+	}
+
+	public function max( $table, $field, $conditions = '', $params = array() ) {
+		$conditions = $this->replaceholders($conditions, $params) ?: '1';
+		$r = (int)$this->select_one($table, 'max(' . $field . ')', $conditions);
+		return $r;
+	}
+
+	public function min( $table, $field, $conditions = '', $params = array() ) {
+		$conditions = $this->replaceholders($conditions, $params) ?: '1';
+		$r = (int)$this->select_one($table, 'min(' . $field . ')', $conditions);
 		return $r;
 	}
 
@@ -376,41 +396,115 @@ abstract class db_generic {
 
 
 
-abstract class db_generic_result {
+abstract class db_generic_result implements Iterator {
 
 	static public $return_object_class = 'stdClass';
 
-	abstract static public function make( $result, $class = '' , $db = null );
+	abstract static public function make( $db, $result, $options = array() );
 
 
-	public $result; // typeof who cares
+	public $db; // typeof db_generic
+	public $result; // unknown type
+	public $options = array();
 	public $class = '';
 
+	public $index = 0;
+	public $record; // unknown type
 
-	public function __construct( $result, $class = '', $db = null ) {
-		$this->result = $result;
-		$this->class = $class;
+	public $mappers = array(); // typeof Array<callback>
+	public $filters = array(); // typeof Array<callback>
+
+	public $filtered = array(); // unknown type
+
+
+	public function __construct( $db, $result, $options = array() ) {
 		$this->db = $db;
+		$this->result = $result;
+		$this->options = $options + array('class' => '', 'args' => array());
+
+		$this->class = $this->options['class'] ? $this->options['class'] : self::$return_object_class;
 	}
 
 
-	abstract public function singleResult();
+	// Abstract methods
+	abstract public function singleValue();
+
+	abstract public function nextObject();
 
 
-	abstract public function nextObject( $class = '', $args = array() );
+	// Iterator methods
+	public function current() {
+		return $this->record;
+	}
 
-	public function allObjects( $class = '', $args = array() ) {
-		$class or $class = 'stdClass';
+	public function key() {
+		return $this->index;
+	}
 
-		$a = array();
-		while ( $r = $this->nextObject($class, $args) ) {
-			$a[] = $r;
+	public function next() {
+		$this->index++;
+	}
+
+	public function rewind() {
+		$this->index = 0;
+	}
+
+	public function valid() {
+		return (bool)($this->record = $this->nextMatchingObject());
+	}
+
+	public function all() {
+		return iterator_to_array($this->result);
+	}
+
+
+	// Toys!
+	public function map($callback) {
+		$this->mappers[] = $callback;
+
+		return $this;
+	}
+
+	public function filter($callback) {
+		$this->filters[] = $callback;
+
+		return $this;
+	}
+
+
+	// Helper methods
+	public function nextMatchingObject() {
+		if ( !$this->mappers && !$this->filters ) {
+			return $this->nextObject($this->options['args']);
 		}
-		return $a;
+
+		while ( $object = $this->nextObject($this->options['args']) ) {
+			// filters
+			if ( $this->filters ) {
+				foreach ( $this->filters AS $callback ) {
+					// bow out at the first sign of false
+					if ( !call_user_func_array($callback, array(&$object, 1)) ) {
+						$this->filtered[] = $object;
+						unset($object);
+						continue 2;
+					}
+				}
+			}
+
+			// mappers
+			if ( $this->mappers ) {
+				foreach ( $this->mappers AS $callback ) {
+					// overwrite object
+					$object = call_user_func($callback, $object, 1);
+				}
+			}
+
+			return $object;
+		}
 	}
 
 
-	abstract public function nextAssocArray();
+	/*abstract public function nextAssocArray();
 
 	public function nextRecord() {
 		return $this->nextAssocArray();
@@ -437,7 +531,7 @@ abstract class db_generic_result {
 			$a[] = $r;
 		}
 		return $a;
-	}
+	}*/
 
 
 }

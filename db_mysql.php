@@ -80,11 +80,6 @@ class db_mysql extends db_generic {
 		return true;
 	}
 
-	public function result( $query, $targetClass = '' ) {
-		$resultClass = __CLASS__.'_result';
-		return $resultClass::make($this->query($query), $targetClass, $this);
-	}
-
 	public function error() {
 		return $this->db->error;
 	}
