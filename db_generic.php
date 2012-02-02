@@ -189,7 +189,7 @@ abstract class db_generic {
 
 		// one result or null
 		if ( $justFirst ) {
-			return $result->next();
+			return $result->nextMatchingObject();
 		}
 
 		// iterator
@@ -219,7 +219,7 @@ abstract class db_generic {
 			return false;
 		}
 		$a = array();
-		while ( $l = $r->nextRow() ) {
+		while ( $l = $r->nextNumericArray() ) {
 			$a[$l[0]] = $l[1];
 		}
 		return $a;
@@ -231,7 +231,7 @@ abstract class db_generic {
 			return false;
 		}
 		$a = array();
-		while ( $l = $r->nextRow() ) {
+		while ( $l = $r->nextNumericArray() ) {
 			$a[] = $l[0];
 		}
 		return $a;
@@ -431,6 +431,10 @@ abstract class db_generic_result implements Iterator {
 
 	abstract public function nextObject();
 
+	abstract public function nextAssocArray();
+
+	abstract public function nextNumericArray();
+
 
 	// Iterator methods
 	public function current() {
@@ -504,7 +508,15 @@ abstract class db_generic_result implements Iterator {
 	}
 
 
-	/*abstract public function nextAssocArray();
+	public function allObjects() {
+		return iterator_to_array($this);
+	}
+
+
+	public function singleResult() {
+		return $this->singleValue($this->options['args']);
+	}
+
 
 	public function nextRecord() {
 		return $this->nextAssocArray();
@@ -519,8 +531,6 @@ abstract class db_generic_result implements Iterator {
 	}
 
 
-	abstract public function nextNumericArray();
-
 	public function nextRow() {
 		return $this->nextNumericArray();
 	}
@@ -531,7 +541,7 @@ abstract class db_generic_result implements Iterator {
 			$a[] = $r;
 		}
 		return $a;
-	}*/
+	}
 
 
 }

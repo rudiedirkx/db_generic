@@ -106,7 +106,7 @@ class db_sqlite extends db_generic {
 		$query = $this->select('sqlite_master', array('type' => 'table'));
 
 		$tables = array();
-		foreach ( $query AS &$table ) {
+		foreach ( $query AS $table ) {
 			$tables[$table->name] = $table;
 		}
 
@@ -115,7 +115,7 @@ class db_sqlite extends db_generic {
 
 	public function table( $tableName, $definition = array() ) {
 		// existing table
-		$table = $this->select('sqlite_master', array('tbl_name' => $tableName));
+		$table = $this->select('sqlite_master', array('tbl_name' => $tableName), null, true);
 
 		// create table
 		if ( $definition ) {
@@ -168,7 +168,7 @@ class db_sqlite extends db_generic {
 
 		// table exists -> success
 		if ( $table ) {
-			return $table[0];
+			return $table;
 		}
 	}
 
@@ -193,14 +193,14 @@ class db_sqlite_result extends db_generic_result {
 	}
 
 
-	/*public function nextAssocArray() {
+	public function nextAssocArray() {
 		return $this->result->fetch(PDO::FETCH_ASSOC);
 	}
 
 
 	public function nextNumericArray() {
 		return $this->result->fetch(PDO::FETCH_NUM);
-	}*/
+	}
 
 }
 
