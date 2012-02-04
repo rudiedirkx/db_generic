@@ -113,7 +113,7 @@ class db_sqlite extends db_generic {
 		return $tables;
 	}
 
-	public function table( $tableName, $definition = array() ) {
+	public function table( $tableName, $definition = null ) {
 		// existing table
 		$table = $this->select('sqlite_master', array('tbl_name' => $tableName), null, true);
 
@@ -170,6 +170,14 @@ class db_sqlite extends db_generic {
 		if ( $table ) {
 			return $table;
 		}
+	}
+
+	public function indices( $tableName ) {
+		
+	}
+
+	public function index( $tableName, $indexName, $definition = null ) {
+		
 	}
 
 }
