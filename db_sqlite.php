@@ -21,14 +21,21 @@ class db_sqlite extends db_generic {
 		try {
 			$this->db = new PDO('sqlite:'.$args['database']);
 
+			// add custom functions
 			$refl = new ReflectionClass(get_class($this));
 			$methods = $refl->getMethods(ReflectionMethod::IS_STATIC);
 			foreach ( $methods AS $method ) {
 				if ( 0 === strpos($method->name, 'fn_') ) {
 					$functionName = strtoupper(substr($method->name, 3));
-					$this->dbCon->sqliteCreateFunction($functionName, array('db_sqlite', $method->name));
+					$this->db->sqliteCreateFunction($functionName, array('db_sqlite', $method->name));
 				}
 			}
+
+			// add simple functions
+			$this->db->sqliteCreateFunction('CEIL', 'ceil');
+			$this->db->sqliteCreateFunction('FLOOR', 'floor');
+			$this->db->sqliteCreateFunction('INTVAL', 'intval');
+			$this->db->sqliteCreateFunction('FLOATVAL', 'floatval');
 		}
 		catch ( PDOException $ex ) {
 			//$this->saveError($ex->getMessage(), $ex->getCode());
