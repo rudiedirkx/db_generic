@@ -106,7 +106,7 @@ abstract class db_generic {
 			return $conditions;
 		}
 
-		$ph = static::$replaceholder;
+		$ph = self::$replaceholder;
 		$offset = 0;
 		foreach ( (array)$params AS $param ) {
 			$pos = strpos($conditions, $ph, $offset);
@@ -198,7 +198,7 @@ abstract class db_generic {
 
 	public function result( $query, $options = array() ) {
 		$resultClass = get_class($this).'_result';
-		return $resultClass::make($this, $this->query($query), $options);
+		return call_user_func(array($resultClass, 'make'), $this, $this->query($query), $options);
 	}
 
 	abstract public function query( $query );
@@ -304,19 +304,22 @@ abstract class db_generic {
 	}
 
 	public function count( $table, $conditions = '', $params = array() ) {
-		$conditions = $this->replaceholders($conditions, $params) ?: '1';
+		$conditions = $this->replaceholders($conditions, $params);
+		$conditions or $conditions = '1';
 		$r = (int)$this->select_one($table, 'count(1)', $conditions);
 		return $r;
 	}
 
 	public function max( $table, $field, $conditions = '', $params = array() ) {
-		$conditions = $this->replaceholders($conditions, $params) ?: '1';
+		$conditions = $this->replaceholders($conditions, $params);
+		$conditions or $conditions = '1';
 		$r = (int)$this->select_one($table, 'max(' . $field . ')', $conditions);
 		return $r;
 	}
 
 	public function min( $table, $field, $conditions = '', $params = array() ) {
-		$conditions = $this->replaceholders($conditions, $params) ?: '1';
+		$conditions = $this->replaceholders($conditions, $params);
+		$conditions or $conditions = '1';
 		$r = (int)$this->select_one($table, 'min(' . $field . ')', $conditions);
 		return $r;
 	}
@@ -349,7 +352,7 @@ abstract class db_generic {
 	}
 
 	public function aliasPrefix( $alias, $column ) {
-		return $this->escapeAndQuoteTable($alias) . $this::$aliasDelim . $this->escapeAndQuoteColumn($column);
+		return $this->escapeAndQuoteTable($alias) . self::$aliasDelim . $this->escapeAndQuoteColumn($column);
 	}
 
 	public function stringifyColumns( $columns ) {
