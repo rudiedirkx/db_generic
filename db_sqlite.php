@@ -114,14 +114,13 @@ class db_sqlite extends db_generic {
 	}
 
 	public function tables() {
-		$query = $this->select('sqlite_master', array('type' => 'table'));
+		static $cache;
 
-		$tables = array();
-		foreach ( $query AS $table ) {
-			$tables[$table->name] = $table;
+		if ( empty($cache) ) {
+			$cache = $this->select_by_field('sqlite_master', 'tbl_name', array('type' => 'table'));
 		}
 
-		return $tables;
+		return $cache;
 	}
 
 	public function table( $tableName, $definition = null, $returnSQL = false ) {
@@ -189,7 +188,13 @@ class db_sqlite extends db_generic {
 	}
 
 	public function columns( $tableName ) {
-		return $this->fetch_by_field('PRAGMA table_info(?);', 'name', array($tableName));
+		static $cache;
+
+		if ( !isset($cache[$tableName]) ) {
+			$cache[$tableName] = $this->fetch_by_field('PRAGMA table_info(?);', 'name', array($tableName));
+		}
+
+		return $cache[$tableName];
 	}
 
 	public function column( $tableName, $columnName, $columnDefinition = null, $returnSQL = false ) {

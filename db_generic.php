@@ -259,7 +259,7 @@ abstract class db_generic {
 		$a = array();
 		foreach ( $result AS $record ) {
 			if ( !property_exists($record, $field) ) {
-				return $this->except('Undefined index: "'.$field.'"');
+				return $this->except($query, 'Undefined index: "'.$field.'"');
 			}
 			$a[$record->$field] = $record;
 		}
