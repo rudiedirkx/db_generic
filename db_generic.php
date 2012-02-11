@@ -2,8 +2,8 @@
 
 class db_exception extends Exception {
 	public $query = '';
-	public function __construct( $error = '', $errno = -1, $previous = null, $options = array() ) {
-		parent::__construct($error, $errno, $previous);
+	public function __construct( $error = '', $errno = -1, $options = array() ) {
+		parent::__construct($error, $errno);
 		if ( isset($options['query']) ) {
 			$this->query = $options['query'];
 		}
@@ -93,7 +93,7 @@ abstract class db_generic {
 
 	public function except( $query, $error, $errno = -1 ) {
 		if ( $this->throwExceptions ) {
-			throw new db_exception($error, $errno, null, array('query' => $query));
+			throw new db_exception($error, $errno, array('query' => $query));
 		}
 
 #		$this->error = $error;
