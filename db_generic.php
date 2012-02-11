@@ -232,6 +232,7 @@ abstract class db_generic {
 		}
 		$a = array();
 		while ( $l = $r->nextNumericArray() ) {
+			isset($l[1]) or array_push($l, $l[0]);
 			$a[$l[0]] = $l[1];
 		}
 		return $a;
@@ -328,8 +329,12 @@ abstract class db_generic {
 	public function max( $table, $field, $conditions = '', $params = array() ) {
 		$conditions = $this->replaceholders($conditions, $params);
 		$conditions or $conditions = '1';
-		$r = (int)$this->select_one($table, 'max(' . $field . ')', $conditions);
-		return $r;
+
+		$r = $this->select_one($table, 'max(' . $field . ')', $conditions);
+
+		if ( null !== $r ) {
+			return (int)$r;
+		}
 	}
 
 	public function min( $table, $field, $conditions = '', $params = array() ) {
