@@ -148,41 +148,48 @@ abstract class db_generic {
 		}
 	}
 
-	public function fetch( $query, $mixed = null ) {
+	static public function fetch_options( $options ) {
 		// default options
 		$class = false;
-		$justFirst = false;
+		$first = false;
 		$params = array();
 
 		// unravel options
 		// Array -> Options or Params
-		if ( is_array($mixed) ) {
+		if ( is_array($options) ) {
 			// Params
-			if ( is_int(key($mixed)) ) {
-				$params = $mixed;
+			if ( is_int(key($options)) ) {
+				$params = $options;
 			}
 			// Options
 			else {
-				isset($mixed['class']) && $class = $mixed['class'];
-				isset($mixed['first']) && $justFirst = $mixed['first'];
-				isset($mixed['params']) && $params = (array)$mixed['params'];
+				isset($options['class']) && $class = $options['class'];
+				isset($options['first']) && $first = $options['first'];
+				isset($options['params']) && $params = (array)$options['params'];
 			}
 		}
-		// Bool -> JustFirst
-		else if ( is_bool($mixed) ) {
-			$justFirst = $mixed;
+		// Bool -> first
+		else if ( is_bool($options) ) {
+			$first = $options;
 		}
 		// String -> Class
-		else if ( is_string($mixed) ) {
-			$class = $mixed;
+		else if ( is_string($options) ) {
+			$class = $options;
 		}
 
-		// compact options for transfer
-		$options = compact('query', 'class', 'justFirst', 'params');
+		return compact('class', 'first', 'params');
+	}
+
+	public function fetch( $query, $options = null ) {
+		// unravel options
+		$options = self::fetch_options($options);
+
+		// add query
+		$options['query'] = $query;
 
 		// apply params
-		if ( $params ) {
-			$query = $this->replaceholders($query, $params);
+		if ( $options['params'] ) {
+			$query = $this->replaceholders($query, $options['params']);
 		}
 
 		$result = $this->result($query, $options);
@@ -193,7 +200,7 @@ abstract class db_generic {
 		}
 
 		// one result or null
-		if ( $justFirst ) {
+		if ( $options['first'] ) {
 			return $result->nextMatchingObject();
 		}
 
@@ -242,6 +249,24 @@ abstract class db_generic {
 		return $a;
 	}
 
+	public function fetch_by_field( $query, $field, $options = null ) {
+		$result = $this->fetch($query, $options);
+
+		if ( !$result ) {
+			return false;
+		}
+
+		$a = array();
+		foreach ( $result AS $record ) {
+			if ( !property_exists($record, $field) ) {
+				return $this->except('Undefined index: "'.$field.'"');
+			}
+			$a[$record->$field] = $record;
+		}
+
+		return $a;
+	}
+
 	public function select_one( $table, $field, $conditions, $params = array() ) {
 		$conditions = $this->replaceholders($conditions, $params);
 		$query = 'SELECT '.$field.' FROM '.$this->escapeAndQuoteTable($table).' WHERE '.$conditions;
@@ -258,21 +283,6 @@ abstract class db_generic {
 			return false;
 		}
 		return count($r);
-	}
-
-	public function fetch_by_field( $query, $field, $class = '' ) {
-		$r = $this->result($query);
-		if ( !$r ) {
-			return false;
-		}
-		$a = array();
-		while ( $l = $r->nextObject($class) ) {
-			if ( !property_exists($l, $field) ) {
-				return $this->except('Undefined index: "'.$field.'"');
-			}
-			$a[$l->$field] = $l;
-		}
-		return $a;
 	}
 
 	static protected $aliasDelim = '.'; // [table] "." [column]

@@ -124,15 +124,15 @@ class db_sqlite extends db_generic {
 		return $tables;
 	}
 
-	public function table( $tableName, $definition = null ) {
+	public function table( $tableName, $definition = null, $returnSQL = false ) {
 		// existing table
-		$table = $this->select('sqlite_master', array('tbl_name' => $tableName), null, true);
+		$table = $this->select('sqlite_master', array('type' => 'table', 'tbl_name' => $tableName), null, true);
 
 		// create table
 		if ( $definition ) {
 			// table exists -> fail
-			if ( $table ) {
-				return false;
+			if ( $table && !$returnSQL ) {
+				return null;
 			}
 
 			// table definition
@@ -173,6 +173,11 @@ class db_sqlite extends db_generic {
 			}
 			$sql .= ');';
 
+			// return SQL
+			if ( $returnSQL ) {
+				return $sql;
+			}
+
 			// execute
 			return $this->execute($sql);
 		}
@@ -181,6 +186,46 @@ class db_sqlite extends db_generic {
 		if ( $table ) {
 			return $table;
 		}
+	}
+
+	public function columns( $tableName ) {
+		return $this->fetch_by_field('PRAGMA table_info(?);', 'name', array($tableName));
+	}
+
+	public function column( $tableName, $columnName, $columnDefinition = null, $returnSQL = false ) {
+		$columns = $this->columns($tableName);
+		$column = @$columns[$columnName];
+
+		if ( null !== $columnDefinition ) {
+			// column exists -> fail
+			if ( $column && !$returnSQL ) {
+				return null;
+			}
+
+			// add column
+			$details = $columnDefinition;
+
+			// check special stuff
+			isset($details['unsigned']) && $details['type'] = 'INT';
+			$type = isset($details['type']) ? strtoupper(trim($details['type'])) : 'TEXT';
+			$notnull = isset($details['null']) ? ( $details['null'] ? '' : ' NOT' ) . ' NULL' : '';
+			$constraint = !empty($details['unsigned']) ? ' CHECK ("'.$columnName.'" >= 0)' : '';
+			$default = isset($details['default']) ? ' DEFAULT '.$this->escapeAndQuote($details['default']) : '';
+
+			// SQL
+			$sql = '"' . $columnName . '" ' . $type . $notnull . $default . $constraint;
+
+			// return SQL
+			if ( $returnSQL ) {
+				return $sql;
+			}
+
+			// execute
+			$sql = 'ALTER TABLE ' . $this->escapeAndQuoteTable($tableName) . ' ADD COLUMN ' . $sql;
+			return $this->execute($sql);
+		}
+
+		return $column;
 	}
 
 	public function indices( $tableName ) {
