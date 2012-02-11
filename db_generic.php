@@ -17,6 +17,11 @@ abstract class db_generic {
 		return array_key_exists($name, $options) ? $options[$name] : $alternative;
 	}
 
+	static function fn_regexp($pattern, $subject) {
+		$pattern = '/' . $pattern . '/i';
+		return preg_match($pattern, $subject);
+	}
+
 	static function fn_if( $f_bool, $f_yes = 1, $f_no = 0 ) {
 		return $f_bool ? $f_yes : $f_no;
 	}

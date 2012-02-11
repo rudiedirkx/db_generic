@@ -20,11 +20,15 @@ class db_sqlite extends db_generic {
 
 		try {
 			$this->db = new PDO('sqlite:'.$args['database']);
-			$this->db->sqliteCreateFunction('IF', array('db_generic', 'fn_if'));
-			$this->db->sqliteCreateFunction('RAND', array('db_generic', 'fn_rand'));
-			$this->db->sqliteCreateFunction('CONCAT', array('db_generic', 'fn_concat'));
-			$this->db->sqliteCreateFunction('FLOOR', 'floor');
-			$this->db->sqliteCreateFunction('CEIL', 'ceil');
+
+			$refl = new ReflectionClass(get_class($this));
+			$methods = $refl->getMethods(ReflectionMethod::IS_STATIC);
+			foreach ( $methods AS $method ) {
+				if ( 0 === strpos($method->name, 'fn_') ) {
+					$functionName = strtoupper(substr($method->name, 3));
+					$this->dbCon->sqliteCreateFunction($functionName, array('db_sqlite', $method->name));
+				}
+			}
 		}
 		catch ( PDOException $ex ) {
 			//$this->saveError($ex->getMessage(), $ex->getCode());
