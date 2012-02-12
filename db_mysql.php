@@ -22,16 +22,16 @@ class db_mysql extends db_generic {
 		$db = self::option($args, 'db', '');
 		$port = self::option($args, 'port', ini_get('mysqli.default_port'));
 
-		try {
-			$this->db = new mysqli($host, $user, $pass, $db, $port);
-		}
-		catch ( PDOException $ex ) {
-			//$this->saveError($ex->getMessage(), $ex->getCode());
-		}
+		$this->db = @new mysqli($host, $user, $pass, $db, $port);
 	}
 
 	public function connected() {
-		return $this->db && is_object(@$this->query('SELECT USER()'));
+		try {
+			return $this->db && is_object(@$this->query('SELECT USER()'));
+		}
+		catch ( Exception $ex ) {}
+
+		return false;
 	}
 
 
