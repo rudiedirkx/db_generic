@@ -154,26 +154,21 @@ class db_mysql_result extends db_generic_result {
 		return false !== $result ? new self($result, $class, $db) : false;
 	}
 
-	public function singleResult() {
+	public function singleValue() {
 		$row = $this->result->fetch_row();
 		return $row ? $row[0] : false;
 	}
 
-	public function nextObject( $class = '', $args = array() ) {
-		$class or $class = self::$return_object_class;
 
-		method_exists($class, '__construct') or $args = array();
-
-		if ( $args ) {
-			return $this->result->fetch_object($class, $args);
-		}
-
-		return $this->result->fetch_object($class);
+	public function nextObject( $args = array() ) {
+		return $this->result->fetch_object($this->class);
 	}
+
 
 	public function nextAssocArray() {
 		return $this->result->fetch_assoc();
 	}
+
 
 	public function nextNumericArray() {
 		return $this->result->fetch_row();
