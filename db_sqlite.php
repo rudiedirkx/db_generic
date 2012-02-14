@@ -39,6 +39,7 @@ class db_sqlite extends db_generic {
 		}
 		catch ( PDOException $ex ) {
 			//$this->saveError($ex->getMessage(), $ex->getCode());
+			throw $ex;
 		}
 	}
 

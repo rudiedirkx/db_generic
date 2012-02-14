@@ -23,6 +23,9 @@ class db_mysql extends db_generic {
 		$port = self::option($args, 'port', ini_get('mysqli.default_port'));
 
 		$this->db = @new mysqli($host, $user, $pass, $db, $port);
+		if ( !$this->db ) {
+			throw new db_exception('No connect with ' . $user . '@' . $db . '.');
+		}
 	}
 
 	public function connected() {
@@ -64,20 +67,7 @@ class db_mysql extends db_generic {
 	}
 
 	public function execute( $query ) {
-		$this->queries[] = $query;
-
-		try {
-			$r = @$this->db->exec($query);
-			if ( false === $r ) {
-				return $this->except($query, $this->error());
-			}
-		} catch ( PDOException $ex ) {
-			return $this->except($query, $ex->getMessage());
-		}
-
-		$this->affected = $r;
-
-		return true;
+		return $this->query($query);
 	}
 
 	public function error() {
@@ -89,11 +79,11 @@ class db_mysql extends db_generic {
 	}
 
 	public function affected_rows() {
-		return $this->affected;
+		return $this->db->affected_rows;
 	}
 
 	public function insert_id() {
-		return $this->db->lastInsertId();
+		return $this->db->insert_id;
 	}
 
 	public function escapeValue( $value ) {
