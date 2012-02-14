@@ -1,0 +1,1 @@
+<?phpif ( isset($_GET['mysql']) ) {        require '../db_mysql.php';        $db = db_mysql::open(array('user' => $_GET['user'], 'pass' => $_GET['pass'], 'db' => $_GET['db']));}else {        require '../db_sqlite.php';        $db = db_sqlite::open(array('database' => './stuff.sqlite3'));}

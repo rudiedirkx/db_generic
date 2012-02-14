@@ -1,11 +1,11 @@
 <?php
 
+// Init
+error_reporting(E_ALL & ~E_STRICT);
 header('Content-type: text/plain');
 $start = microtime(1);
 
-require '../db_sqlite.php';
-
-$db = db_sqlite::open(array('database' => './stuff.sqlite3'));
+require 'inc.connect.php';
 
 // create table `stuffs`
 $definition = array(

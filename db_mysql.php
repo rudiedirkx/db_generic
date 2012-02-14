@@ -23,8 +23,8 @@ class db_mysql extends db_generic {
 		$port = self::option($args, 'port', ini_get('mysqli.default_port'));
 
 		$this->db = @new mysqli($host, $user, $pass, $db, $port);
-		if ( !$this->db ) {
-			throw new db_exception('No connect with ' . $user . '@' . $db . '.');
+		if ( $this->db->connect_errno ) {
+				throw new db_exception($this->db->connect_error, $this->db->connect_errno);
 		}
 	}
 

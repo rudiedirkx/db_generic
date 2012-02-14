@@ -14,7 +14,7 @@ abstract class db_generic {
 
 	static function option( $options, $name, $alternative = null ) {
 		$options = (array)$options;
-		return array_key_exists($name, $options) ? $options[$name] : $alternative;
+		return isset($options[$name]) ? $options[$name] : $alternative;
 	}
 
 	static function fn_regexp($pattern, $subject) {
