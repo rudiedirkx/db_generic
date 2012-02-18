@@ -11,7 +11,7 @@ class db_mysql extends db_generic {
 		}
 	}
 
-	public function __construct( $args ) {
+	protected function __construct( $args ) {
 		if ( isset($args['exceptions']) ) {
 			$this->throwExceptions = (bool)$args['exceptions'];
 		}

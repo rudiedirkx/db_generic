@@ -37,12 +37,13 @@ abstract class db_generic {
 	public $queries = array();
 	protected $db;
 	protected $throwExceptions = true;
+	public $metaCache = array();
 
 #	public $error = '';
 #	public $errno = 0;
 
 	abstract static public function open( $args );
-	abstract public function __construct( $args );
+	abstract protected function __construct( $args );
 	abstract public function connected();
 
 	abstract public function escapeValue( $value );
@@ -413,6 +414,99 @@ abstract class db_generic {
 			$conditions = implode(' '.$delim.' ', $sql);
 		}
 		return $conditions;
+	}
+
+	public function schema($schema) {
+		// format
+		if ( !isset($schema['tables']) ) {
+			$schema = array('tables' => $schema);
+		}
+
+		$updates = array();
+
+		// sync tables
+		foreach ( $schema['tables'] AS $tableName => $tableDefinition ) {
+			// format
+			if ( !isset($tableDefinition['columns']) ) {
+				$tableDefinition = array('columns' => $tableDefinition);
+			}
+
+			// ensure table
+			$created = $this->table($tableName, $tableDefinition);
+
+			if ( null !== $created ) {
+				// feedback
+				$updates['tables'][$tableName] = $created;
+			}
+			else {
+				// table exists
+				// sync columns
+				foreach ( $tableDefinition['columns'] AS $columnName => $columnDefinition ) {
+					if ( is_int($columnName) ) {
+						$columnName = $columnDefinition;
+						$columnDefinition = array();
+					}
+
+					// ensure column
+					$created = $this->column($tableName, $columnName, $columnDefinition);
+
+					// save result for feedback
+					if ( null !== $created ) {
+						$updates['columns'][$tableName][$columnName] = $created;
+					}
+				}
+			}
+
+			// tables & columns synced
+			// sync indexes
+			if ( isset($tableDefinition['indexes']) ) {
+				foreach ( $tableDefinition['indexes'] AS $indexName => $indexDetails ) {
+					$created = $this->index($tableName, $indexName, (array)$indexDetails);
+
+					// save result for feedback
+					if ( null !== $created ) {
+						$updates['indexes'][$tableName][$indexName] = $created;
+					}
+				}
+			}
+		}
+
+		// add data
+		foreach ( $schema['tables'] AS $tableName => $tableDefinition ) {
+			if ( isset($updates['tables'][$tableName]) && true === $updates['tables'][$tableName] ) {
+				// new table
+				// add data
+				if ( isset($schema['data'][$tableName]) ) {
+					// all or nothing
+					$this->begin();
+
+					try {
+						$inserts = 0;
+						foreach ( $schema['data'][$tableName] AS $data ) {
+							if ( $this->insert($tableName, $data) ) {
+								$inserts++;
+							}
+						}
+
+						// no exceptions => all
+						$this->commit();
+
+						// save result for feedback
+						$updates['data'][$tableName] = $inserts;
+					}
+					catch ( db_exception $ex ) {
+						// exception => nothing
+						// rollback to cancel transaction
+						$this->rollback();
+
+						// save result for feedback
+						$updates['data'][$tableName] = false;
+					}
+				}
+			}
+		}
+
+		return $updates;
 	}
 
 }

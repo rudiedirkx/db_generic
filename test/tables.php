@@ -41,3 +41,7 @@ print_r($db->tables());
 echo "\n";
 
 echo number_format(microtime(1) - $start, 4) . "\n";
+
+print_r($db);
+
+

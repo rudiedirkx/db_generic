@@ -13,13 +13,16 @@ class db_sqlite extends db_generic {
 
 	public $affected = 0;
 
-	public function __construct( $args ) {
+	protected function __construct( $args ) {
 		if ( isset($args['exceptions']) ) {
 			$this->throwExceptions = (bool)$args['exceptions'];
 		}
 
 		try {
 			$this->db = new PDO('sqlite:'.$args['database']);
+
+			// set encoding
+			$this->execute('PRAGMA encoding = "UTF-8"');
 
 			// add custom functions
 			$refl = new ReflectionClass(get_class($this));
@@ -36,6 +39,8 @@ class db_sqlite extends db_generic {
 			$this->db->sqliteCreateFunction('FLOOR', 'floor');
 			$this->db->sqliteCreateFunction('INTVAL', 'intval');
 			$this->db->sqliteCreateFunction('FLOATVAL', 'floatval');
+			$this->db->sqliteCreateFunction('LOWER', 'mb_strtolower');
+			$this->db->sqliteCreateFunction('UPPER', 'mb_strtoupper');
 		}
 		catch ( PDOException $ex ) {
 			//$this->saveError($ex->getMessage(), $ex->getCode());
@@ -44,7 +49,7 @@ class db_sqlite extends db_generic {
 	}
 
 	public function connected() {
-		return $this->db && is_object(@$this->query('SELECT COUNT(1) FROM sqlite_master'));
+		return true;
 	}
 
 
@@ -114,60 +119,63 @@ class db_sqlite extends db_generic {
 		return str_replace("'", "''", (string)$value);
 	}
 
+	public function quoteColumn( $column ) {
+		return '"' . $column . '"';
+	}
+
+	public function quoteTable( $table ) {
+		return '"' . $table . '"';
+	}
+
 	public function tables() {
-		static $cache;
+		$cache = &$this->metaCache[__FUNCTION__];
 
 		if ( empty($cache) ) {
-			$cache = $this->select_by_field('sqlite_master', 'tbl_name', array('type' => 'table'));
+			$cache = $this->select_by_field('sqlite_master', 'tbl_name', array(
+				'type' => 'table',
+			));
 		}
 
 		return $cache;
 	}
 
-	public function table( $tableName, $definition = null, $returnSQL = false ) {
-		// existing table
-		$table = $this->select('sqlite_master', array('type' => 'table', 'tbl_name' => $tableName), null, true);
+	public function table( $tableName, $tableDefinition = null, $returnSQL = false ) {
+		// if we care only about SQL, don't fetch tables
+		if ( $returnSQL ) {
+			$tables = $table = false;
+		}
+		else {
+			// existing table
+			$tables = $this->tables();
+			$table = @$tables[$tableName];
+		}
 
 		// create table
-		if ( $definition ) {
+		if ( $tableDefinition ) {
 			// table exists -> fail
 			if ( $table && !$returnSQL ) {
 				return null;
 			}
 
 			// table definition
-			if ( !isset($definition['columns']) ) {
-				$definition = array('columns' => $definition);
+			if ( !isset($tableDefinition['columns']) ) {
+				$tableDefinition = array('columns' => $tableDefinition);
 			}
 
 			// create table sql
 			$sql = 'CREATE TABLE "'.$tableName.'" (' . "\n";
 			$first = true;
-			foreach ( $definition['columns'] AS $columnName => $details ) {
+			foreach ( $tableDefinition['columns'] AS $columnName => $details ) {
 				// the very simple columns: array( 'a', 'b', 'c' )
 				if ( is_int($columnName) ) {
 					$columnName = $details;
 					$details = array();
 				}
 
-				// if PK, forget the rest
-				if ( !empty($details['pk']) ) {
-					$type = 'INTEGER PRIMARY KEY AUTOINCREMENT';
-					$notnull = '';
-					$constraint = '';
-					$default = '';
-				}
-				else {
-					// check special stuff
-					isset($details['unsigned']) && $details['type'] = 'INT';
-					$type = isset($details['type']) ? strtoupper(trim($details['type'])) : 'TEXT';
-					$notnull = isset($details['null']) ? ( $details['null'] ? '' : ' NOT' ) . ' NULL' : '';
-					$constraint = !empty($details['unsigned']) ? ' CHECK ("'.$columnName.'" >= 0)' : '';
-					$default = isset($details['default']) ? ' DEFAULT '.$this->escapeAndQuote($details['default']) : '';
-				}
+				$columnSQL = $this->column($tableName, $columnName, $details, true);
 
 				$comma = $first ? ' ' : ',';
-				$sql .= '  ' . $comma . '"'.$columnName.'" '.$type.$notnull.$default.$constraint . "\n";
+				$sql .= '  ' . $comma . $columnSQL . "\n";
 
 				$first = false;
 			}
@@ -189,7 +197,7 @@ class db_sqlite extends db_generic {
 	}
 
 	public function columns( $tableName ) {
-		static $cache;
+		$cache = &$this->metaCache[__FUNCTION__];
 
 		if ( !isset($cache[$tableName]) ) {
 			$cache[$tableName] = $this->fetch_by_field('PRAGMA table_info(?);', 'name', array($tableName));
@@ -199,9 +207,17 @@ class db_sqlite extends db_generic {
 	}
 
 	public function column( $tableName, $columnName, $columnDefinition = null, $returnSQL = false ) {
-		$columns = $this->columns($tableName);
-		$column = @$columns[$columnName];
+		// if we care only about SQL, don't fetch columns
+		if ( $returnSQL ) {
+			$columns = $column = false;
+		}
+		else {
+			$columns = $this->columns($tableName);
+			$column = @$columns[$columnName];
+		}
 
+		// create it?
+		// can be empty: array()
 		if ( null !== $columnDefinition ) {
 			// column exists -> fail
 			if ( $column && !$returnSQL ) {
@@ -210,16 +226,44 @@ class db_sqlite extends db_generic {
 
 			// add column
 			$details = $columnDefinition;
+			$properties = array();
 
+			// if PK, forget the rest
+			if ( !empty($details['pk']) ) {
+				$properties[] = 'INTEGER PRIMARY KEY AUTOINCREMENT';
+			}
 			// check special stuff
-			isset($details['unsigned']) && $details['type'] = 'INT';
-			$type = isset($details['type']) ? strtoupper(trim($details['type'])) : 'TEXT';
-			$notnull = isset($details['null']) ? ( $details['null'] ? '' : ' NOT' ) . ' NULL' : '';
-			$constraint = !empty($details['unsigned']) ? ' CHECK ("'.$columnName.'" >= 0)' : '';
-			$default = isset($details['default']) ? ' DEFAULT '.$this->escapeAndQuote($details['default']) : '';
+			else {
+				// type
+				$type = isset($details['type']) ? strtoupper($details['type']) : 'TEXT';
+				isset($details['unsigned']) && $type = 'INT';
+				$properties[] = $type;
+
+				// not null
+				if ( isset($details['null']) ) {
+					$properties[] = $details['null'] ? 'NULL' : 'NOT NULL';
+				}
+
+				// constraints
+				if ( !empty($details['unsigned']) ) {
+					$properties[] = 'CHECK ("'.$columnName.'" >= 0)';
+				}
+				if ( isset($details['min']) ) {
+					$properties[] = 'CHECK ("'.$columnName.'" >= ' . (float)$details['min'] . ')';
+				}
+				if ( isset($details['max']) ) {
+					$properties[] = 'CHECK ("'.$columnName.'" <= ' . (float)$details['max'] . ')';
+				}
+
+				// default -- ignore NULL
+				if ( isset($details['default']) ) {
+					$D = $details['default'];
+					$properties[] = 'DEFAULT ' . ( is_int($D) || is_float($D) ? $D : $this->escapeAndQuote($D) );
+				}
+			}
 
 			// SQL
-			$sql = '"' . $columnName . '" ' . $type . $notnull . $default . $constraint;
+			$sql = '"' . $columnName . '" ' . implode(' ', $properties);
 
 			// return SQL
 			if ( $returnSQL ) {
@@ -234,12 +278,55 @@ class db_sqlite extends db_generic {
 		return $column;
 	}
 
-	public function indices( $tableName ) {
-		
+	public function indexes( $tableName ) {
+		$cache = &$this->metaCache[__FUNCTION__];
+
+		if ( !isset($cache[$tableName]) ) {
+			$cache[$tableName] = $this->select_by_field('sqlite_master', 'name', array(
+				'type' => 'index',
+				'tbl_name' => $tableName,
+			));
+		}
+
+		return $cache[$tableName];
 	}
 
-	public function index( $tableName, $indexName, $definition = null ) {
-		
+	public function index( $tableName, $indexName, $indexDefinition = null, $returnSQL = false ) {
+		// existing index
+		$indexes = $this->indexes($tableName);
+		$index = @$indexes[$indexName];
+
+		// create index
+		if ( $indexDefinition ) {
+			// column exists -> fail
+			if ( $index && !$returnSQL ) {
+				return null;
+			}
+
+			// format
+			if ( !isset($indexDefinition['columns']) ) {
+				$indexDefinition = array('columns' => $indexDefinition);
+			}
+
+			// unique
+			$unique = !empty($indexDefinition['unique']);
+			$unique = $unique ? 'UNIQUE' : '';
+
+			// subject columns
+			$columns = array_map(array($this, 'escapeAndQuoteTable'), $indexDefinition['columns']);
+			$columns = implode(', ', $columns);
+
+			// full SQL
+			$sql = 'CREATE '.$unique.' INDEX "'.$indexName.'" ON "'.$tableName.'" ('.$columns.')';
+
+			if ( $returnSQL ) {
+				return $sql;
+			}
+
+			return $this->execute($sql);
+		}
+
+		return $index;
 	}
 
 }
