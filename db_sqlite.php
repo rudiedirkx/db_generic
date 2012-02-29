@@ -260,6 +260,12 @@ class db_sqlite extends db_generic {
 					$D = $details['default'];
 					$properties[] = 'DEFAULT ' . ( is_int($D) || is_float($D) ? $D : $this->escapeAndQuote($D) );
 				}
+
+				// foreign key relationship
+				if ( isset($details['references']) ) {
+					list($tbl, $col) = $details['references'];
+					$properties[] = 'REFERENCES ' . $tbl . '(' . $col . ')';
+				}
 			}
 
 			// SQL

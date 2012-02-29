@@ -1,10 +1,5 @@
 <?php
 
-// Init
-error_reporting(E_ALL & ~E_STRICT);
-header('Content-type: text/plain');
-$start = microtime(1);
-
 require 'inc.connect.php';
 
 // Query & response type

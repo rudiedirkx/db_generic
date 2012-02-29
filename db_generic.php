@@ -154,6 +154,7 @@ abstract class db_generic {
 		$class = false;
 		$first = false;
 		$params = array();
+		$exotics = array();
 
 		// unravel options
 		// Array -> Options or Params
@@ -164,6 +165,7 @@ abstract class db_generic {
 			}
 			// Options
 			else {
+				$exotics = $options;
 				isset($options['class']) && $class = $options['class'];
 				isset($options['first']) && $first = $options['first'];
 				isset($options['params']) && $params = (array)$options['params'];
@@ -178,7 +180,7 @@ abstract class db_generic {
 			$class = $options;
 		}
 
-		return compact('class', 'first', 'params');
+		return array_merge($exotics, compact('class', 'first', 'params'));
 	}
 
 	public function fetch( $query, $options = null ) {
@@ -252,21 +254,15 @@ abstract class db_generic {
 	}
 
 	public function fetch_by_field( $query, $field, $options = null ) {
+		$options = self::fetch_options($options);
+		$options['by_field'] = $field;
 		$result = $this->fetch($query, $options);
 
 		if ( !$result ) {
 			return false;
 		}
 
-		$a = array();
-		foreach ( $result AS $record ) {
-			if ( !property_exists($record, $field) ) {
-				return $this->except($query, 'Undefined index: "'.$field.'"');
-			}
-			$a[$record->$field] = $record;
-		}
-
-		return $a;
+		return $result;
 	}
 
 	public function select_one( $table, $field, $conditions, $params = array() ) {
@@ -360,7 +356,6 @@ abstract class db_generic {
 	public function delete( $table, $conditions, $params = array() ) {
 		$conditions = $this->replaceholders($conditions, $params);
 		$sql = 'DELETE FROM '.$this->escapeAndQuoteTable($table).' WHERE '.$conditions.';';
-//var_dump($sql); exit;
 		return $this->execute($sql);
 	}
 
@@ -368,7 +363,6 @@ abstract class db_generic {
 		$updates = $this->stringifyUpdates($updates);
 		$conditions = $this->replaceholders($conditions, $params);
 		$sql = 'UPDATE '.$this->escapeAndQuoteTable($table).' SET '.$updates.' WHERE '.$conditions.'';
-//var_dump($sql); exit;
 		return $this->execute($sql);
 	}
 
@@ -559,6 +553,9 @@ abstract class db_generic_result implements Iterator {
 	}
 
 	public function key() {
+		if ( isset($this->options['by_field']) ) {
+			return $this->record->{$this->options['by_field']};
+		}
 		return $this->index;
 	}
 
