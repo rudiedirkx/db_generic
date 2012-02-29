@@ -517,7 +517,7 @@ abstract class db_generic {
 
 abstract class db_generic_result implements Iterator {
 
-	static public $return_object_class = 'stdClass';
+	static public $return_object_class = 'db_generic_record';
 
 	abstract static public function make( $db, $result, $options = array() );
 
@@ -667,6 +667,29 @@ abstract class db_generic_result implements Iterator {
 			$a[] = $r;
 		}
 		return $a;
+	}
+
+
+}
+
+
+
+class db_generic_record extends stdClass implements ArrayAccess {
+
+	public function offsetExists( $offset ) {
+		return property_exists($this, $offset);
+	}
+
+	public function offsetGet( $offset ) {
+		return $this->$offset;
+	}
+
+	public function offsetSet( $offset, $value ) {
+		$this->$offset = $value;
+	}
+
+	public function offsetUnset( $offset ) {
+		unset($this->$offset);
 	}
 
 
