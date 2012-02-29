@@ -275,12 +275,20 @@ abstract class db_generic {
 		return $r->singleResult();
 	}
 
-	public function count_rows( $query ) {
-		$r = $this->fetch($query);
-		if ( !$r ) {
+	public function count_rows( $query, $options = null ) {
+		$result = $this->fetch($query, $options);
+		if ( !$result ) {
 			return false;
 		}
-		return count($r);
+
+		$rows = 0;
+		foreach ( $result AS $r ) {
+			$rows++;
+		}
+
+		unset($r, $result);
+
+		return $rows;
 	}
 
 	static protected $aliasDelim = '.'; // [table] "." [column]
