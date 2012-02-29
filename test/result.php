@@ -43,13 +43,13 @@ $query->filter(function(&$record) {
 #print_r($records);
 
 // let db_generic do it
-#$records = $query->all();
-#print_r($records);
+$records = $query->all();
+print_r($records);
 
 // do-it-yourself
-foreach ( $query AS $record ) {
-	var_dump($record);
-}
+#foreach ( $query AS $record ) {
+#	var_dump($record);
+#}
 
 echo "\n";
 

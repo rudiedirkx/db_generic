@@ -579,8 +579,17 @@ abstract class db_generic_result implements Iterator {
 		return (bool)($this->record = $this->nextMatchingObject());
 	}
 
+
 	public function all() {
-		return iterator_to_array($this->result);
+		return iterator_to_array($this);
+	}
+
+	public function fetchAll() {
+		return $this->all();
+	}
+
+	public function allObjects() {
+		return $this->all();
 	}
 
 
@@ -627,11 +636,6 @@ abstract class db_generic_result implements Iterator {
 
 			return $object;
 		}
-	}
-
-
-	public function allObjects() {
-		return iterator_to_array($this);
 	}
 
 
