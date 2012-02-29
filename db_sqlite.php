@@ -133,7 +133,7 @@ class db_sqlite extends db_generic {
 		if ( empty($cache) ) {
 			$cache = $this->select_by_field('sqlite_master', 'tbl_name', array(
 				'type' => 'table',
-			));
+			))->all();
 		}
 
 		return $cache;
@@ -141,13 +141,10 @@ class db_sqlite extends db_generic {
 
 	public function table( $tableName, $tableDefinition = null, $returnSQL = false ) {
 		// if we care only about SQL, don't fetch tables
-		if ( $returnSQL ) {
-			$tables = $table = false;
-		}
-		else {
-			// existing table
+		$tables = $table = false;
+		if ( !$returnSQL ) {
 			$tables = $this->tables();
-			$table = @$tables[$tableName];
+			isset($tables[$tableName]) && $table = $tables[$tableName];
 		}
 
 		// create table
@@ -200,7 +197,7 @@ class db_sqlite extends db_generic {
 		$cache = &$this->metaCache[__FUNCTION__];
 
 		if ( !isset($cache[$tableName]) ) {
-			$cache[$tableName] = $this->fetch_by_field('PRAGMA table_info(?);', 'name', array($tableName));
+			$cache[$tableName] = $this->fetch_by_field('PRAGMA table_info(?);', 'name', array($tableName))->all();
 		}
 
 		return $cache[$tableName];
@@ -208,12 +205,10 @@ class db_sqlite extends db_generic {
 
 	public function column( $tableName, $columnName, $columnDefinition = null, $returnSQL = false ) {
 		// if we care only about SQL, don't fetch columns
-		if ( $returnSQL ) {
-			$columns = $column = false;
-		}
-		else {
+		$columns = $column = false;
+		if ( !$returnSQL ) {
 			$columns = $this->columns($tableName);
-			$column = @$columns[$columnName];
+			isset($columns[$columnName]) && $column = $columns[$columnName];
 		}
 
 		// create it?
@@ -291,7 +286,7 @@ class db_sqlite extends db_generic {
 			$cache[$tableName] = $this->select_by_field('sqlite_master', 'name', array(
 				'type' => 'index',
 				'tbl_name' => $tableName,
-			));
+			))->all();
 		}
 
 		return $cache[$tableName];
@@ -300,7 +295,7 @@ class db_sqlite extends db_generic {
 	public function index( $tableName, $indexName, $indexDefinition = null, $returnSQL = false ) {
 		// existing index
 		$indexes = $this->indexes($tableName);
-		$index = @$indexes[$indexName];
+		$index = $indexes[$indexName];
 
 		// create index
 		if ( $indexDefinition ) {
