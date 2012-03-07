@@ -533,7 +533,9 @@ abstract class db_generic_result implements Iterator {
 	public $mappers = array(); // typeof Array<callback>
 	public $filters = array(); // typeof Array<callback>
 
-	public $filtered = array(); // unknown type
+	public $notEmpty; // bool
+	public $firstRecord; // unknown type
+	public $filtered = array(); // Array<unknown type>
 
 
 	public function __construct( $db, $result, $options = array() ) {
@@ -580,6 +582,16 @@ abstract class db_generic_result implements Iterator {
 	}
 
 
+	public function notEmpty() {
+		if ( null === $this->notEmpty ) {
+			$this->firstRecord = $this->nextMatchingObject();
+			$this->notEmpty = (bool)$this->firstRecord;
+		}
+
+		return $this->notEmpty;
+	}
+
+
 	public function all() {
 		return iterator_to_array($this);
 	}
@@ -609,6 +621,12 @@ abstract class db_generic_result implements Iterator {
 
 	// Helper methods
 	public function nextMatchingObject() {
+		if ( $this->firstRecord ) {
+			$object = $this->firstRecord;
+			$this->firstRecord = null;
+			return $object;
+		}
+
 		if ( !$this->mappers && !$this->filters ) {
 			return $this->nextObject($this->options['args']);
 		}
