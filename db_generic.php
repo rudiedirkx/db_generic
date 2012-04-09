@@ -526,6 +526,7 @@ abstract class db_generic_result implements Iterator {
 	public $result; // unknown type
 	public $options = array();
 	public $class = '';
+	public $collection = '';
 
 	public $index = 0;
 	public $record; // unknown type
@@ -592,16 +593,28 @@ abstract class db_generic_result implements Iterator {
 	}
 
 
-	public function all() {
+	public function all( $options = null ) {
+		isset($options['class']) && $this->class = $options['class'];
+		isset($options['collection']) && $this->collection = $options['collection'];
+
+		if ( $this->collection ) {
+			$collection = new $this->collection;
+			foreach ( $this AS $record ) {
+				$collection[] = $record;
+			}
+
+			return $collection;
+		}
+
 		return iterator_to_array($this);
 	}
 
-	public function fetchAll() {
-		return $this->all();
+	public function fetchAll( $options = null ) {
+		return $this->all($options);
 	}
 
-	public function allObjects() {
-		return $this->all();
+	public function allObjects( $options = null ) {
+		return $this->all($options);
 	}
 
 
@@ -692,7 +705,7 @@ abstract class db_generic_result implements Iterator {
 
 
 
-class db_generic_record extends stdClass implements ArrayAccess {
+class db_generic_record implements ArrayAccess {
 
 	public function offsetExists( $offset ) {
 		return property_exists($this, $offset);
