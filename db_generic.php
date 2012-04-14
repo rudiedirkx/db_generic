@@ -716,11 +716,119 @@ class db_generic_record implements ArrayAccess {
 	}
 
 	public function offsetSet( $offset, $value ) {
+		$offset = (string)$offset;
 		$this->$offset = $value;
 	}
 
 	public function offsetUnset( $offset ) {
 		unset($this->$offset);
+	}
+
+
+}
+
+
+
+class db_generic_collection implements ArrayAccess, IteratorAggregate, Countable {
+
+	protected $items = array();
+	protected $index = 0;
+
+	// Array
+	public function first() {
+		return reset($this->items);
+	}
+
+	public function last() {
+		return end($this->items);
+	}
+
+	public function shift() {
+		return array_shift($this->items);
+	}
+
+	public function unshift( $item ) {
+		array_unshift($this->items, $item);
+		return $this;
+	}
+
+	public function push( $item ) {
+		array_push($this->items, $item);
+		return $this;
+	}
+
+	public function pop() {
+		return array_pop($this->items);
+	}
+
+	public function slice( $offset ) {
+		$args = func_get_args();
+		array_unshift($args, $this->items);
+		return call_user_func_array('array_slice', $args);
+	}
+
+	public function splice() {
+		$args = func_get_args();
+		array_unshift($args, $this->items);
+		return call_user_func_array('array_splice', $args);
+	}
+
+	public function map( $callback ) {
+		$items = array();
+		foreach ( $this->items AS $i => $item ) {
+			$items[$i] = call_user_func($callback, $item, $i, $this->items);
+		}
+
+		return $items;
+	}
+
+	public function filter( $callback = null, $negate = false ) {
+		$items = array();
+		foreach ( $this->items AS $i => $item ) {
+			if ( !$negate == (bool)call_user_func($callback, $item, $i, $this->items) ) {
+				$items[$i] = $item;
+			}
+		}
+
+		return $items;
+	}
+
+
+	// ArrayAccess
+	public function offsetExists( $offset ) {
+		return isset($this->items[$offset]);
+	}
+
+	public function offsetGet( $offset ) {
+		return $this->items[$offset];
+	}
+
+	public function offsetSet( $offset, $value ) {
+		if ( null === $offset ) {
+			$this->items[] = $value;
+		}
+		else if ( is_int($offset) ) {
+			$this->items[$offset] = $value;
+		}
+		else {
+			throw new InvalidArgumentException(__CLASS__ . ' offset must be an integer.');
+		}
+	}
+
+	public function offsetUnset( $offset ) {
+		unset($this->items[$offset]);
+	}
+
+
+	// IteratorAggregate
+	public function getIterator() {
+		return new ArrayIterator($this->items);
+	}
+
+
+	// Countable
+	public function count() {
+		return count($this->items);
 	}
 
 

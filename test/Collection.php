@@ -2,7 +2,9 @@
 
 require 'inc.connect.php';
 
-class MyCollection implements ArrayAccess, Iterator {
+class MyCollection extends db_generic_collection {
+
+	public $items; // For demo purposes only.
 
 	public function combine( $field ) {
 		$str = '';
@@ -13,59 +15,12 @@ class MyCollection implements ArrayAccess, Iterator {
 		return $str;
 	}
 
-	protected $items = array();
-	protected $index = 0;
-
-	// ArrayAccess
-	public function offsetExists( $offset ) {
-		return isset($this->items[$offset]);
-	}
-
-	public function offsetGet( $offset ) {
-		return $this->items[$offset];
-	}
-
-	public function offsetSet( $offset, $value ) {
-		if ( null === $offset ) {
-			$this->items[] = $value;
-		}
-		else {
-			$this->items[$offset] = $value;
-		}
-	}
-
-	public function offsetUnset( $offset ) {
-		unset($this->items[$offset]);
-	}
-
-
-	// Iterator
-	public function current() {
-		return $this->items[$this->index];
-	}
-
-	public function key() {
-		return $this->index;
-	}
-
-	public function next() {
-		$this->index++;
-	}
-
-	public function rewind() {
-		$this->index = 0;
-	}
-
-	public function valid() {
-		return isset($this->items[$this->index]);
-	}
-
-
 }
 
 $query = $db->select('stuffs', '1 LIMIT 3');
 $results = $query->all(array('collection' => 'MyCollection'));
 print_r($results);
+echo count($results) . " results\n";
 
 echo "\n";
 
@@ -73,10 +28,39 @@ var_dump($results->combine('stuff'));
 
 echo "\n";
 
+$results->oele = 4;
+$results[5] = new db_generic_record;
+$results[5]->id = 0;
+$results[5]->stuff = 'x';
+print_r($results);
+
+echo "\n";
+
 foreach ( $results AS $k => $record ) {
 	var_dump($k);
 	print_r($record);
 }
+
+echo "\n";
+
+foreach ( $results AS $a => $record ) {
+	echo 'a: ' . $a . ' = ' . $record->id . "\n";
+	foreach ( $results AS $b => $record ) {
+		echo '  b: ' . $b . ' = ' . $record->id . "\n";
+	}
+}
+
+echo "\n";
+
+echo 'first: ';
+print_r($results->first());
+echo 'key: ';
+var_dump(key($results->items));
+
+echo 'last: ';
+print_r($results->last());
+echo 'key: ';
+var_dump(key($results->items));
 
 
 
