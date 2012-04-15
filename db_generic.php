@@ -597,16 +597,13 @@ abstract class db_generic_result implements Iterator {
 		isset($options['class']) && $this->class = $options['class'];
 		isset($options['collection']) && $this->collection = $options['collection'];
 
-		if ( $this->collection ) {
-			$collection = new $this->collection;
-			foreach ( $this AS $record ) {
-				$collection[] = $record;
-			}
+		$items = iterator_to_array($this);
 
-			return $collection;
+		if ( $this->collection ) {
+			$items = new $this->collection($items);
 		}
 
-		return iterator_to_array($this);
+		return $items;
 	}
 
 	public function fetchAll( $options = null ) {
@@ -733,6 +730,12 @@ class db_generic_collection implements ArrayAccess, IteratorAggregate, Countable
 
 	protected $items = array();
 	protected $index = 0;
+
+	public function __construct( $items = null ) {
+		if ( is_array($items) ) {
+			$this->items = $items;
+		}
+	}
 
 	// Array
 	public function first() {

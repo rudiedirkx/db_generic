@@ -21,6 +21,11 @@ $query = $db->select('stuffs', '1 LIMIT 3');
 $results = $query->all(array('collection' => 'MyCollection'));
 print_r($results);
 echo count($results) . " results\n";
+echo 'is_array: ';
+var_dump(is_array($results));
+echo 'instanceof db_generic_collection: ';
+var_dump($results instanceof db_generic_collection);
+
 
 echo "\n";
 
