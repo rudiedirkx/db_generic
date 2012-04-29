@@ -8,14 +8,16 @@ class db_mysql extends db_generic {
 		return new self($args);
 	}
 
+	protected $database = '';
+
 	protected function __construct( $args ) {
 		$host = self::option($args, 'host', ini_get('mysqli.default_host'));
 		$user = self::option($args, 'user', ini_get('mysqli.default_user'));
 		$pass = self::option($args, 'pass', ini_get('mysqli.default_pw'));
-		$db = self::option($args, 'db', self::option($args, 'database', ''));
+		$this->database = self::option($args, 'db', self::option($args, 'database', ''));
 		$port = self::option($args, 'port', ini_get('mysqli.default_port'));
 
-		$this->db = @new mysqli($host, $user, $pass, $db, $port);
+		$this->db = @new mysqli($host, $user, $pass, $this->database, $port);
 		if ( $this->db->connect_errno ) {
 			return $this->except('', $this->db->connect_error, $this->db->connect_errno);
 		}
@@ -97,48 +99,113 @@ class db_mysql extends db_generic {
 		return $this->db->real_escape_string((string)$value);
 	}
 
-	public function table( $tableName, $definition = array() ) {
-		// existing table
-		try {
-			$table = $this->fetch('EXPLAIN '.$this->escapeAndQuoteTable($tableName));
+	public function escapeTable( $value ) {
+		return '`' . $value . '`';
+	}
+
+	public function escapeColumn( $value ) {
+		return '`' . $value . '`';
+	}
+
+	public function tables() {
+		$cache = &$this->metaCache[__FUNCTION__];
+
+		if ( empty($cache) ) {
+			$cache = $this->fetch_by_field('show open tables from ' . $this->database, 'Table')->all();
 		}
-		catch ( Exception $ex ) {
-			$table = false;
+
+		return $cache;
+	}
+
+	public function columns( $tableName ) {
+		$cache = &$this->metaCache[__FUNCTION__];
+
+		if ( !isset($cache[$tableName]) ) {
+			$cache[$tableName] = $this->fetch_by_field('EXPLAIN ' . $this->escapeAndQuoteTable($tableName), 'Field')->all();
 		}
 
-		// create table
-		if ( $definition ) {
-			// table exists -> fail
-			if ( $table ) {
-				return false;
+		return $cache[$tableName];
+	}
+
+	public function column( $tableName, $columnName, $columnDefinition = null, $returnSQL = false ) {
+		// if we care only about SQL, don't fetch columns
+		$columns = $column = false;
+		if ( !$returnSQL ) {
+			$columns = $this->columns($tableName);
+			isset($columns[$columnName]) && $column = $columns[$columnName];
+		}
+
+		// create it?
+		// can be empty: array()
+		if ( null !== $columnDefinition ) {
+			// column exists -> fail
+			if ( $column && !$returnSQL ) {
+				return null;
 			}
 
-			// table definition
-			if ( !isset($definition['columns']) ) {
-				$definition = array('columns' => $definition);
+			// add column
+			$details = $columnDefinition;
+			$properties = array();
+
+			// if PK, forget the rest
+			if ( !empty($details['pk']) ) {
+				$properties[] = 'INTEGER unsigned PRIMARY KEY auto_increment';
+			}
+			// check special stuff
+			else {
+				// type
+				$type = isset($details['type']) ? strtoupper($details['type']) : 'VARCHAR';
+				isset($details['unsigned']) && $type = 'INT';
+
+				if ( !isset($details['size']) ) {
+					if ( 'VARCHAR' == $type )  {
+						$details['size'] = 255;
+					}
+					else if ( 'INT' == $type )  {
+						$details['size'] = 10;
+					}
+				}
+				else {
+					if ( 1 == $details['size'] ) {
+						$type = 'TINYINT';
+					}
+				}
+
+				isset($details['size']) && $type .= '(' . (int)$details['size'] . ')';
+
+				$properties[] = $type;
+
+				// constraints
+				if ( !empty($details['unsigned']) ) {
+					$properties[] = 'unsigned';
+				}
+
+				// not null
+				if ( isset($details['null']) ) {
+					$properties[] = $details['null'] ? 'NULL' : 'NOT NULL';
+				}
+
+				// default -- ignore NULL
+				if ( isset($details['default']) ) {
+					$D = $details['default'];
+					$properties[] = 'DEFAULT ' . ( is_int($D) || is_float($D) ? $D : $this->escapeAndQuote($D) );
+				}
 			}
 
-			// create table sql
-			$sql = 'CREATE TABLE `'.$tableName.'` (' . "\n";
-			$first = true;
-			foreach ( $definition['columns'] AS $columnName => $details ) {
-				// do stuff here
+			// SQL
+			$sql = $this->escapeAndQuoteColumn($columnName) . ' ' . implode(' ', $properties);
 
-				$comma = $first ? ' ' : ',';
-//				$sql .= '  ' . $comma . '"'.$columnName.'" '.$type.$notnull.$default.$constraint . "\n";
-
-				$first = false;
+			// return SQL
+			if ( $returnSQL ) {
+				return $sql;
 			}
-			$sql .= ');';
 
 			// execute
-			return false && $this->execute($sql);
+			$sql = 'ALTER TABLE ' . $this->escapeAndQuoteTable($tableName) . ' ADD COLUMN ' . $sql;
+			return $this->execute($sql);
 		}
 
-		// table exists -> success
-		if ( $table ) {
-			return $table;
-		}
+		return $column;
 	}
 
 }

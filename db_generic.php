@@ -509,6 +509,72 @@ abstract class db_generic {
 		return $updates;
 	}
 
+	abstract public function tables();
+
+	public function table( $tableName, $tableDefinition = null, $returnSQL = false ) {
+		// if we care only about SQL, don't fetch tables
+		$tables = $table = false;
+		if ( !$returnSQL ) {
+			$tables = $this->tables();
+			isset($tables[$tableName]) && $table = $tables[$tableName];
+		}
+
+		// create table
+		if ( $tableDefinition ) {
+			// table exists -> fail
+			if ( $table && !$returnSQL ) {
+				return null;
+			}
+
+			// table definition
+			if ( !isset($tableDefinition['columns']) ) {
+				$tableDefinition = array('columns' => $tableDefinition);
+			}
+
+			// create table sql
+			$sql = 'CREATE TABLE ' . $this->escapeAndQuoteTable($tableName) . ' (' . "\n";
+			$first = true;
+			foreach ( $tableDefinition['columns'] AS $columnName => $details ) {
+				// the very simple columns: array( 'a', 'b', 'c' )
+				if ( is_int($columnName) ) {
+					$columnName = $details;
+					$details = array();
+				}
+
+				$columnSQL = $this->column($tableName, $columnName, $details, true);
+
+				$comma = $first ? ' ' : ',';
+				$sql .= '  ' . $comma . $columnSQL . "\n";
+
+				$first = false;
+			}
+			$sql .= ');';
+
+			// return SQL
+			if ( $returnSQL ) {
+				return $sql;
+			}
+
+			// execute
+			return $this->execute($sql);
+		}
+
+		// table exists -> success
+		if ( $table ) {
+			return $table;
+		}
+	}
+
+	abstract public function columns( $tableName );
+
+	abstract public function column( $tableName, $columnName, $columnDefinition = null, $returnSQL = false );
+
+	// @TODO in db_mysql
+	//abstract public function indexes( $tableName );
+
+	// @TODO in db_mysql
+	//abstract public function index( $tableName, $indexName, $indexDefinition = null, $returnSQL = false );
+
 }
 
 

@@ -131,60 +131,6 @@ class db_sqlite extends db_generic {
 		return $cache;
 	}
 
-	public function table( $tableName, $tableDefinition = null, $returnSQL = false ) {
-		// if we care only about SQL, don't fetch tables
-		$tables = $table = false;
-		if ( !$returnSQL ) {
-			$tables = $this->tables();
-			isset($tables[$tableName]) && $table = $tables[$tableName];
-		}
-
-		// create table
-		if ( $tableDefinition ) {
-			// table exists -> fail
-			if ( $table && !$returnSQL ) {
-				return null;
-			}
-
-			// table definition
-			if ( !isset($tableDefinition['columns']) ) {
-				$tableDefinition = array('columns' => $tableDefinition);
-			}
-
-			// create table sql
-			$sql = 'CREATE TABLE "'.$tableName.'" (' . "\n";
-			$first = true;
-			foreach ( $tableDefinition['columns'] AS $columnName => $details ) {
-				// the very simple columns: array( 'a', 'b', 'c' )
-				if ( is_int($columnName) ) {
-					$columnName = $details;
-					$details = array();
-				}
-
-				$columnSQL = $this->column($tableName, $columnName, $details, true);
-
-				$comma = $first ? ' ' : ',';
-				$sql .= '  ' . $comma . $columnSQL . "\n";
-
-				$first = false;
-			}
-			$sql .= ');';
-
-			// return SQL
-			if ( $returnSQL ) {
-				return $sql;
-			}
-
-			// execute
-			return $this->execute($sql);
-		}
-
-		// table exists -> success
-		if ( $table ) {
-			return $table;
-		}
-	}
-
 	public function columns( $tableName ) {
 		$cache = &$this->metaCache[__FUNCTION__];
 
