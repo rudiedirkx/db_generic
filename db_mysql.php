@@ -5,27 +5,34 @@ require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'db_generic.php');
 class db_mysql extends db_generic {
 
 	static public function open( $args ) {
-		$db = new self($args);
-		if ( $db->connected() ) {
-			return $db;
-		}
+		return new self($args);
 	}
 
 	protected function __construct( $args ) {
-		if ( isset($args['exceptions']) ) {
-			$this->throwExceptions = (bool)$args['exceptions'];
-		}
-
 		$host = self::option($args, 'host', ini_get('mysqli.default_host'));
 		$user = self::option($args, 'user', ini_get('mysqli.default_user'));
 		$pass = self::option($args, 'pass', ini_get('mysqli.default_pw'));
-		$db = self::option($args, 'db', '');
+		$db = self::option($args, 'db', self::option($args, 'database', ''));
 		$port = self::option($args, 'port', ini_get('mysqli.default_port'));
 
 		$this->db = @new mysqli($host, $user, $pass, $db, $port);
 		if ( $this->db->connect_errno ) {
-				throw new db_exception($this->db->connect_error, $this->db->connect_errno);
+			return $this->except('', $this->db->connect_error, $this->db->connect_errno);
 		}
+
+		$this->postConnect($args);
+	}
+
+	protected function postConnect($args) {
+		// set encoding
+		$names = "SET NAMES 'utf8'";
+
+		$collate = '';
+		if ( !empty($args['collate']) ) {
+			$collate = " COLLATE '" . ( is_string($args['collate']) ? $args['collate'] : 'utf7_general_ci' ) . "'";
+		}
+
+		$this->execute($names . $collate);
 	}
 
 	public function connected() {

@@ -36,7 +36,6 @@ abstract class db_generic {
 
 	public $queries = array();
 	protected $db;
-	protected $throwExceptions = true;
 	public $metaCache = array();
 
 #	public $error = '';
@@ -44,12 +43,18 @@ abstract class db_generic {
 
 	abstract static public function open( $args );
 	abstract protected function __construct( $args );
-	abstract public function connected();
+
+	protected function postConnect( $args ) {
+	}
+
+	public function connected() {
+		return true;
+	}
 
 	abstract public function escapeValue( $value );
 
 	public function quoteValue( $value ) {
-		return "'".$value."'";
+		return "'" . $value . "'";
 	}
 
 	public function escapeAndQuote( $value ) {
@@ -93,14 +98,7 @@ abstract class db_generic {
 	}
 
 	public function except( $query, $error, $errno = -1 ) {
-		if ( $this->throwExceptions ) {
-			throw new db_exception($error, $errno, array('query' => $query));
-		}
-
-#		$this->error = $error;
-#		$this->errno = $errno;
-
-		return false;
+		throw new db_exception($error, $errno, array('query' => $query));
 	}
 
 	static public $replaceholder = '?';

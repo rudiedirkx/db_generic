@@ -5,24 +5,14 @@ require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'db_generic.php');
 class db_sqlite extends db_generic {
 
 	static public function open( $args ) {
-		$db = new self($args);
-		if ( $db->connected() ) {
-			return $db;
-		}
+		return new self($args);
 	}
 
 	public $affected = 0;
 
 	protected function __construct( $args ) {
-		if ( isset($args['exceptions']) ) {
-			$this->throwExceptions = (bool)$args['exceptions'];
-		}
-
 		try {
-			$this->db = new PDO('sqlite:'.$args['database']);
-
-			// set encoding
-			$this->execute('PRAGMA encoding = "UTF-8"');
+			$this->db = new PDO('sqlite:' . $args['database']);
 
 			// add custom functions
 			$refl = new ReflectionClass(get_class($this));
@@ -41,15 +31,17 @@ class db_sqlite extends db_generic {
 			$this->db->sqliteCreateFunction('FLOATVAL', 'floatval');
 			$this->db->sqliteCreateFunction('LOWER', 'mb_strtolower');
 			$this->db->sqliteCreateFunction('UPPER', 'mb_strtoupper');
+
+			$this->postConnect($args);
 		}
 		catch ( PDOException $ex ) {
-			//$this->saveError($ex->getMessage(), $ex->getCode());
-			throw $ex;
+			return $this->except('', $ex->getMessage(), $ex->getCode());
 		}
 	}
 
-	public function connected() {
-		return true;
+	protected function postConnect($args) {
+		// set encoding
+		$this->execute('PRAGMA encoding = "UTF-8"');
 	}
 
 
