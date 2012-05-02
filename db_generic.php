@@ -575,6 +575,140 @@ abstract class db_generic {
 	// @TODO in db_mysql
 	//abstract public function index( $tableName, $indexName, $indexDefinition = null, $returnSQL = false );
 
+	public function buildSelectQuery($query) {
+		$sql = array();
+
+		$pre = "\n\t";
+		$post = "\n";
+
+		// SELECT
+		if ( empty($query['fields']) ) {
+			$sql[] = 'SELECT' . $pre . '*' . $post;
+		}
+		else {
+			$fields = array();
+
+			foreach ( $query['fields'] AS $i => $field ) {
+				// With table alias
+				if ( is_string($i) ) {
+					$tableAlias = $i . '.';
+
+					foreach ( (array)$field AS $f ) {
+						'*' == $f || $f = $this->escapeAndQuoteColumn($f);
+						$fields[] = $tableAlias . $f;
+					}
+				}
+				// No table alias / expression
+				else {
+					$fields[] = $field;
+				}
+			}
+
+			$sql[] = 'SELECT' . $pre . implode(', ', $fields) . $post;
+		}
+
+		// FROM
+		$table = $query['table'];
+		$alias = '';
+		if ( is_array($table) ) {
+			$alias = ' ' . $table[1];
+			$table = $table[0];
+		}
+		$sql[] = 'FROM' . $pre . $this->escapeAndQuoteTable($table) . $alias . $post;
+
+		// X JOIN
+		foreach ( array('join', 'left join', 'inner join', 'right join') AS $joinType ) {
+			if ( isset($query[$joinType]) ) {
+				$joinSource = $query[$joinType];
+
+				'join' == $joinType && $joinType = 'inner join';
+
+				foreach ( $joinSource AS $joinDetails ) {
+					$joinDetails[] = null;
+					list($table, $conditions) = $joinDetails;
+
+					$tableAlias = '';
+					if ( is_array($table) ) {
+						$tableAlias = ' ' . $table[1];
+						$table = $table[0];
+					}
+
+					$on = '';
+					if ( $conditions ) {
+						$on = $post . 'ON' . $pre . implode(' AND ', $conditions);
+					}
+
+					$sql[] = strtoupper($joinType) . $pre . $this->escapeAndQuoteTable($table) . $tableAlias . $on . $post;
+				}
+			}
+		}
+
+		// WHERE
+		if ( !empty($query['conditions']) ) {
+			$conditions = array();
+
+			foreach ( $query['conditions'] AS $i => $condition ) {
+				$escapeAndQuoteColumn = true;
+
+				if ( is_string($i) ) {
+					$condition = array($i, $condition, '=');
+					$escapeAndQuoteColumn = false;
+				}
+
+				$condition[] = null;
+				list($field, $value, $operator) = $condition;
+				$operator || $operator = '=';
+
+				$tableAlias = '';
+				if ( is_array($field) ) {
+					$tableAlias = $field[0] . '.';
+					$field = $field[1];
+				}
+
+				$escapeAndQuoteColumn && $field = $this->escapeAndQuoteColumn($field);
+				$conditions[] = $tableAlias . $field . ' ' . strtoupper($operator) . ' ' . $this->escapeAndQuote($value);
+			}
+
+			$sql[] = 'WHERE' . $pre . implode(' AND ', $conditions) . $post;
+		}
+
+		// GROUP BY
+		
+
+		// HAVING
+		
+
+		// ORDER BY
+		if ( !empty($query['order']) ) {
+			$order = array();
+
+			foreach ( (array)$query['order'] AS $field ) {
+				$direction = 'ASC';
+				$tableAlias = '';
+				if ( is_array($field) ) {
+					if ( isset($field[2]) ) {
+						$direction = strtoupper($field[2]);
+					}
+
+					$tableAlias = $field[0] . '.';
+					$field = $field[1];
+				}
+
+				$order[] = $tableAlias . $this->escapeAndQuoteColumn($field) . ' ' . $direction;
+			}
+
+			$sql[] = 'ORDER BY' . $pre . implode(', ', $order) . $post;
+		}
+
+		// LIMIT
+		
+
+		// OFFSET
+		
+
+		return implode($sql);
+	}
+
 }
 
 
