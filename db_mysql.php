@@ -26,15 +26,18 @@ class db_mysql extends db_generic {
 	}
 
 	protected function postConnect($args) {
-		// set encoding
-		$names = "SET NAMES 'utf8'";
+		if ( !isset($args['charset']) || !empty($args['charset']) ) {
+			// set encoding
+			$names = "SET NAMES 'utf8'";
 
-		$collate = '';
-		if ( !empty($args['collate']) ) {
-			$collate = " COLLATE '" . ( is_string($args['collate']) ? $args['collate'] : 'utf8_general_ci' ) . "'";
+			$collate = '';
+			if ( !empty($args['collate']) ) {
+				$charset = is_string($args['collate']) ? $args['collate'] : 'utf8_general_ci';
+				$collate = " COLLATE '" . $charset . "'";
+			}
+
+			$this->execute($names . $collate);
 		}
-
-		$this->execute($names . $collate);
 	}
 
 	public function connected() {
