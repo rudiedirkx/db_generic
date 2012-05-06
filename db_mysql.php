@@ -31,7 +31,7 @@ class db_mysql extends db_generic {
 
 		$collate = '';
 		if ( !empty($args['collate']) ) {
-			$collate = " COLLATE '" . ( is_string($args['collate']) ? $args['collate'] : 'utf7_general_ci' ) . "'";
+			$collate = " COLLATE '" . ( is_string($args['collate']) ? $args['collate'] : 'utf8_general_ci' ) . "'";
 		}
 
 		$this->execute($names . $collate);
