@@ -51,15 +51,15 @@ class db_mysql extends db_generic {
 
 
 	public function begin() {
-		return $this->db->execute('BEGIN');
+		return $this->execute('BEGIN');
 	}
 
 	public function commit() {
-		return $this->db->execute('COMMIT');
+		return $this->execute('COMMIT');
 	}
 
 	public function rollback() {
-		return $this->db->execute('ROLLBACK');
+		return $this->execute('ROLLBACK');
 	}
 
 
