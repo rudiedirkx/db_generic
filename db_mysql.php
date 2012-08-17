@@ -114,7 +114,7 @@ class db_mysql extends db_generic {
 		$cache = &$this->metaCache[__FUNCTION__];
 
 		if ( empty($cache) ) {
-			$cache = $this->fetch_by_field('show open tables from ' . $this->database, 'Table')->all();
+			$cache = $this->fetch_by_field('show full tables from ' . $this->database . ' where Table_type = ?', 'Tables_in_' . $this->database, array('BASE TABLE'))->all();
 		}
 
 		return $cache;
