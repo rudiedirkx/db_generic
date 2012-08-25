@@ -199,6 +199,11 @@ class db_sqlite extends db_generic {
 					list($tbl, $col) = $details['references'];
 					$properties[] = 'REFERENCES ' . $tbl . '(' . $col . ')';
 				}
+
+				// Case-insensitive (not the default in SQLite)
+				if ( 'TEXT' == $type ) {
+					$properties[] = 'COLLATE NOCASE';
+				}
 			}
 
 			// SQL

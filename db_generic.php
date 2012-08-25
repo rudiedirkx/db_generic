@@ -864,6 +864,10 @@ abstract class db_generic_result implements Iterator {
 		}
 	}
 
+	public function first() {
+		return $this->nextMatchingObject();
+	}
+
 
 	public function singleResult() {
 		return $this->singleValue($this->options['args']);
