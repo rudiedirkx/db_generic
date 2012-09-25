@@ -408,7 +408,13 @@ abstract class db_generic {
 				}
 				else {
 					$column = $table ? $this->aliasPrefix($table, $column) : $this->escapeAndQuoteColumn($column);
-					$sql[] = $column . ( null === $value ? ' IS NULL' : ' = ' . $this->escapeAndQuoteValue($value) );
+					if ( is_array($value) ) {
+						$values = array_map(array($this, 'escapeAndQuoteValue'), $value);
+						$sql[] = $column . ' IN (' . implode(', ', $values) . ')';
+					}
+					else {
+						$sql[] = $column . ( null === $value ? ' IS NULL' : ' = ' . $this->escapeAndQuoteValue($value) );
+					}
 				}
 			}
 			$conditions = implode(' '.$delim.' ', $sql);
