@@ -41,7 +41,7 @@ abstract class db_generic {
 #	public $error = '';
 #	public $errno = 0;
 
-	abstract static public function open( $args );
+	// abstract static public function open( $args ); // E_STRICT doesn't like abstract static functions =(
 	abstract protected function __construct( $args );
 
 	protected function postConnect( $args ) {
@@ -723,7 +723,7 @@ abstract class db_generic_result implements Iterator {
 
 	static public $return_object_class = 'db_generic_record';
 
-	abstract static public function make( $db, $result, $options = array() );
+	// abstract static public function make( $db, $result, $options = array() );
 
 
 	public $db; // typeof db_generic

@@ -217,9 +217,10 @@ class db_mysql extends db_generic {
 
 class db_mysql_result extends db_generic_result {
 
-	static public function make( $result, $class = '', $db = null ) {
-		return false !== $result ? new self($result, $class, $db) : false;
+	static public function make( $db, $result, $options ) {
+		return false !== $result ? new self($db, $result, $options) : false;
 	}
+
 
 	public function singleValue() {
 		$row = $this->result->fetch_row();

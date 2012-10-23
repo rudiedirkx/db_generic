@@ -279,7 +279,7 @@ class db_sqlite extends db_generic {
 
 class db_sqlite_result extends db_generic_result {
 
-	static public function make( $db, $result, $options = array() ) {
+	static public function make( $db, $result, $options ) {
 		return false !== $result ? new self($db, $result, $options) : false;
 	}
 
