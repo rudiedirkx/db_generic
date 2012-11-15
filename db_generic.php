@@ -818,6 +818,22 @@ abstract class db_generic_result implements Iterator {
 		return $this->all($options);
 	}
 
+	public function fields( $valueField, $keyField = null ) {
+		$fields = array();
+
+		foreach ( $this AS $object ) {
+			$value = $object->$valueField;
+			if ( null !== $keyField ) {
+				$fields[ $object->$keyField ] = $object->$valueField;
+			}
+			else {
+				$fields[] = $object->$valueField;
+			}
+		}
+
+		return $fields;
+	}
+
 
 	// Toys!
 	public function map($callback) {
