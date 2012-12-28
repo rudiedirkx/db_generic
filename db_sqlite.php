@@ -238,7 +238,7 @@ class db_sqlite extends db_generic {
 	public function index( $tableName, $indexName, $indexDefinition = null, $returnSQL = false ) {
 		// existing index
 		$indexes = $this->indexes($tableName);
-		$index = $indexes[$indexName];
+		$index = @$indexes[$indexName];
 
 		// create index
 		if ( $indexDefinition ) {

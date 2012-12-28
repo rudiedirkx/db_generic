@@ -946,6 +946,14 @@ class db_generic_record implements ArrayAccess {
 	}
 
 
+	public function __get( $name ) {
+		$function = 'get_' . $name;
+		if ( is_callable($method = array($this, $function)) ) {
+			return $this->$name = call_user_func($method);
+		}
+	}
+
+
 }
 
 
