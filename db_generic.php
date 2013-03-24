@@ -222,11 +222,12 @@ abstract class db_generic {
 	abstract public function insert_id();
 
 
-	public function fetch_fields( $query ) {
-		return $this->fetch_fields_assoc($query);
+	public function fetch_fields( $query, $params = array() ) {
+		return $this->fetch_fields_assoc($query, $params);
 	}
 
-	public function fetch_fields_assoc( $query ) {
+	public function fetch_fields_assoc( $query, $params = array() ) {
+		$query = $this->replaceholders($query, $params);
 		$r = $this->result($query);
 		if ( !is_object($r) ) {
 			return false;
@@ -239,7 +240,8 @@ abstract class db_generic {
 		return $a;
 	}
 
-	public function fetch_fields_numeric( $query ) {
+	public function fetch_fields_numeric( $query, $params = array() ) {
+		$query = $this->replaceholders($query, $params);
 		$r = $this->result($query);
 		if ( !is_object($r) ) {
 			return false;
@@ -304,7 +306,7 @@ abstract class db_generic {
 	}
 
 	public function select_fields( $table, $fields, $conditions, $params = array() ) {
-		return $this->select_fields_assoc($table, $fields, $conditions);
+		return $this->select_fields_assoc($table, $fields, $conditions, $params);
 	}
 
 	public function select_fields_assoc( $table, $fields, $conditions, $params = array() ) {
