@@ -8,6 +8,9 @@ class db_exception extends Exception {
 			$this->query = $options['query'];
 		}
 	}
+	public function getQuery() {
+		return $this->query;
+	}
 }
 
 abstract class db_generic {

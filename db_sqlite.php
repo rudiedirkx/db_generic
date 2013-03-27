@@ -58,7 +58,8 @@ class db_sqlite extends db_generic {
 	}
 
 
-	public function query( $query ) {
+	public function query( $query, $params = array() ) {
+		$query = $this->replaceholders($query, $params);
 		$this->queries[] = $query;
 
 		try {
@@ -73,7 +74,8 @@ class db_sqlite extends db_generic {
 		return $q;
 	}
 
-	public function execute( $query ) {
+	public function execute( $query, $params = array() ) {
+		$query = $this->replaceholders($query, $params);
 		$this->queries[] = $query;
 
 		try {
