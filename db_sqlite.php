@@ -179,6 +179,11 @@ class db_sqlite extends db_generic {
 					$properties[] = $details['null'] ? 'NULL' : 'NOT NULL';
 				}
 
+				// unique
+				if ( !empty($details['unique']) ) {
+					$properties[] = 'UNIQUE';
+				}
+
 				// constraints
 				if ( !empty($details['unsigned']) ) {
 					$properties[] = 'CHECK ("'.$columnName.'" >= 0)';

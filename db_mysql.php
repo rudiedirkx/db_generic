@@ -190,6 +190,11 @@ class db_mysql extends db_generic {
 					$properties[] = $details['null'] ? 'NULL' : 'NOT NULL';
 				}
 
+				// unique
+				if ( !empty($details['unique']) ) {
+					$properties[] = 'UNIQUE';
+				}
+
 				// default -- ignore NULL
 				if ( isset($details['default']) ) {
 					$D = $details['default'];
