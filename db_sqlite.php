@@ -31,6 +31,8 @@ class db_sqlite extends db_generic {
 			$this->db->sqliteCreateFunction('FLOATVAL', 'floatval');
 			$this->db->sqliteCreateFunction('LOWER', 'mb_strtolower');
 			$this->db->sqliteCreateFunction('UPPER', 'mb_strtoupper');
+			$this->db->sqliteCreateFunction('SHA1', 'sha1');
+			$this->db->sqliteCreateFunction('MD5', 'md5');
 
 			$this->postConnect($args);
 		}
