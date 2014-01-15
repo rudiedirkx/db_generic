@@ -396,7 +396,7 @@ abstract class db_generic {
 					$u .= ', ' . $v;
 				}
 				else {
-					$u .= ', ' . $k . ' = ' . $this->escapeAndQuoteValue($v);
+					$u .= ', ' . $this->escapeAndQuoteColumn($k) . ' = ' . $this->escapeAndQuoteValue($v);
 				}
 			}
 			$updates = substr($u, 1);
