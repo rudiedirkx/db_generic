@@ -4,35 +4,50 @@ require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'db_generic.php');
 
 class db_mysql extends db_generic {
 
-	static public function open( $args ) {
-		return new self($args);
+	static public function open( $params ) {
+		return new self($params);
 	}
 
 	protected $database = '';
 
-	protected function __construct( $args ) {
-		$host = self::option($args, 'host', ini_get('mysqli.default_host'));
-		$user = self::option($args, 'user', ini_get('mysqli.default_user'));
-		$pass = self::option($args, 'pass', ini_get('mysqli.default_pw'));
-		$this->database = self::option($args, 'db', self::option($args, 'database', ''));
-		$port = self::option($args, 'port', ini_get('mysqli.default_port'));
+	protected function __construct( $params ) {
+		$this->db = mysqli_init();
 
-		$this->db = @new mysqli($host, $user, $pass, $this->database, $port);
+		isset($params['timeout']) and $this->db->options(MYSQLI_OPT_CONNECT_TIMEOUT, $params['timeout']);
+
+		$args = array(
+			self::option($params, 'host', ini_get('mysqli.default_host')),
+			self::option($params, 'user', ini_get('mysqli.default_user')),
+			self::option($params, 'pass', ini_get('mysqli.default_pw')),
+			self::option($params, 'db', self::option($params, 'database', ''))
+		);
+		if ( isset($params['port']) || isset($params['socket']) || isset($params['flags']) ) {
+			$args[] = self::option($params, 'port', ini_get('mysqli.default_port'));
+
+			if ( isset($params['socket']) || isset($params['flags']) ) {
+				$args[] = self::option($params, 'socket', '');
+
+				isset($params['flags']) and $args[] = $params['flags'];
+			}
+		}
+
+		@call_user_func_array(array($this->db, 'real_connect'), $args);
+
 		if ( $this->db->connect_errno ) {
 			return $this->except('', $this->db->connect_error, $this->db->connect_errno);
 		}
 
-		$this->postConnect($args);
+		$this->postConnect($params);
 	}
 
-	protected function postConnect($args) {
-		if ( !isset($args['charset']) || !empty($args['charset']) ) {
+	protected function postConnect( $params ) {
+		if ( !isset($params['charset']) || !empty($params['charset']) ) {
 			// set encoding
 			$names = "SET NAMES 'utf8'";
 
 			$collate = '';
-			if ( !empty($args['collate']) ) {
-				$charset = is_string($args['collate']) ? $args['collate'] : 'utf8_general_ci';
+			if ( !empty($params['collate']) ) {
+				$charset = is_string($params['collate']) ? $params['collate'] : 'utf8_general_ci';
 				$collate = " COLLATE '" . $charset . "'";
 			}
 
@@ -80,8 +95,7 @@ class db_mysql extends db_generic {
 	}
 
 	public function execute( $query, $params = array() ) {
-		$query = $this->replaceholders($query, $params);
-		return $this->query($query);
+		return $this->query($query, $params);
 	}
 
 	public function error() {
@@ -105,11 +119,11 @@ class db_mysql extends db_generic {
 	}
 
 	public function escapeTable( $value ) {
-		return '`' . $value . '`';
+		return $value;
 	}
 
 	public function escapeColumn( $value ) {
-		return '`' . $value . '`';
+		return $value;
 	}
 
 	public function tables() {
