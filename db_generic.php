@@ -268,30 +268,23 @@ abstract class db_generic {
 		return $result;
 	}
 
-	public function select_one( $table, $field, $conditions, $params = array() ) {
-		$conditions = $this->replaceholders($conditions, $params);
-		$query = 'SELECT '.$field.' FROM '.$this->escapeAndQuoteTable($table).' WHERE '.$conditions;
-		$r = $this->result($query);
-		if ( !$r ) {
-			return false;
+	public function fetch_one( $query, $field, $params = array() ) {
+		$query = $this->replaceholders($query, $params);
+		$record = $this->fetch($query)->first();
+		if ( $record && isset($record->$field) ) {
+			return $record->$field;
 		}
-		return $r->singleResult();
 	}
 
-	public function count_rows( $query, $options = null ) {
-		$result = $this->fetch($query, $options);
-		if ( !$result ) {
-			return false;
-		}
+	public function select_one( $table, $field, $conditions, $params = array() ) {
+		$conditions = $this->replaceholders($conditions, $params);
+		$query = 'SELECT ' . $field . ' FROM ' . $this->escapeAndQuoteTable($table) . ' WHERE ' . $conditions;
+		return $this->fetch_one($query, $field);
+	}
 
-		$rows = 0;
-		foreach ( $result AS $r ) {
-			$rows++;
-		}
-
-		unset($r, $result);
-
-		return $rows;
+	public function count_rows( $query, $params = array() ) {
+		$query = $this->replaceholders($query, $params);
+		return $this->fetch_one('SELECT COUNT(1) AS num FROM (' . $query . ') x', 'num');
 	}
 
 	static protected $aliasDelim = '.'; // [table] "." [column]
@@ -684,10 +677,10 @@ abstract class db_generic {
 		}
 
 		// GROUP BY
-		
+
 
 		// HAVING
-		
+
 
 		// ORDER BY
 		if ( !empty($query['order']) ) {
@@ -712,10 +705,10 @@ abstract class db_generic {
 		}
 
 		// LIMIT
-		
+
 
 		// OFFSET
-		
+
 
 		return implode($sql);
 	}
