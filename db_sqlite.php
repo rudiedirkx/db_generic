@@ -43,7 +43,11 @@ class db_sqlite extends db_generic {
 
 	protected function postConnect($args) {
 		// set encoding
-		$this->execute('PRAGMA encoding = "UTF-8"');
+		$this->execute('PRAGMA encoding="UTF-8"');
+
+		// screw ACID, go SPEED!
+		$db->execute('PRAGMA synchronous=OFF');
+		$db->execute('PRAGMA journal_mode=OFF');
 	}
 
 
