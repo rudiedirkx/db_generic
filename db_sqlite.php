@@ -4,27 +4,25 @@ require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'db_generic.php');
 
 class db_sqlite extends db_generic {
 
-	static public function open( $args ) {
-		return new self($args);
-	}
-
 	public $affected = 0;
 
-	protected function __construct( $args ) {
+	protected function __construct( $params ) {
+		$this->params = $params;
+	}
+
+	protected function connect() {
+		if ( $this->params === false ) return;
+
 		try {
-			$this->db = new PDO('sqlite:' . $args['database']);
+			$this->db = new PDO('sqlite:' . $this->params['database']);
 
-			// add custom functions
-			$refl = new ReflectionClass(get_class($this));
-			$methods = $refl->getMethods(ReflectionMethod::IS_STATIC);
-			foreach ( $methods AS $method ) {
-				if ( 0 === strpos($method->name, 'fn_') ) {
-					$functionName = strtoupper(substr($method->name, 3));
-					$this->db->sqliteCreateFunction($functionName, array('db_sqlite', $method->name));
-				}
-			}
+			// Add custom functions
+			$this->db->sqliteCreateFunction('REGEXP', array(__CLASS__, 'fn_regexp'));
+			$this->db->sqliteCreateFunction('IF', array(__CLASS__, 'fn_if'));
+			$this->db->sqliteCreateFunction('RAND', array(__CLASS__, 'fn_rand'));
+			$this->db->sqliteCreateFunction('CONCAT', array(__CLASS__, 'fn_concat'));
 
-			// add simple functions
+			// Add simple functions
 			$this->db->sqliteCreateFunction('CEIL', 'ceil');
 			$this->db->sqliteCreateFunction('FLOOR', 'floor');
 			$this->db->sqliteCreateFunction('INTVAL', 'intval');
@@ -34,14 +32,15 @@ class db_sqlite extends db_generic {
 			$this->db->sqliteCreateFunction('SHA1', 'sha1');
 			$this->db->sqliteCreateFunction('MD5', 'md5');
 
-			$this->postConnect($args);
+			$this->params = false;
+			$this->postConnect($this->params);
 		}
 		catch ( PDOException $ex ) {
 			return $this->except('', $ex->getMessage(), $ex->getCode());
 		}
 	}
 
-	protected function postConnect($args) {
+	protected function postConnect($params) {
 		// set encoding
 		$this->execute('PRAGMA encoding="UTF-8"');
 
@@ -65,6 +64,8 @@ class db_sqlite extends db_generic {
 
 
 	public function query( $query, $params = array() ) {
+		$this->connect();
+
 		$query = $this->replaceholders($query, $params);
 		$this->queries[] = $query;
 
@@ -81,6 +82,8 @@ class db_sqlite extends db_generic {
 	}
 
 	public function execute( $query, $params = array() ) {
+		$this->connect();
+
 		$query = $this->replaceholders($query, $params);
 		$this->queries[] = $query;
 

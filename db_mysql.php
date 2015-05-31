@@ -4,30 +4,32 @@ require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'db_generic.php');
 
 class db_mysql extends db_generic {
 
-	static public function open( $params ) {
-		return new self($params);
-	}
-
 	protected $database = '';
 
 	protected function __construct( $params ) {
+		$this->params = $params;
+	}
+
+	protected function connect() {
+		if ( $this->params === false ) return;
+
 		$this->db = mysqli_init();
 
-		isset($params['timeout']) and $this->db->options(MYSQLI_OPT_CONNECT_TIMEOUT, $params['timeout']);
+		isset($this->params['timeout']) and $this->db->options(MYSQLI_OPT_CONNECT_TIMEOUT, $this->params['timeout']);
 
 		$args = array(
-			self::option($params, 'host', ini_get('mysqli.default_host')),
-			self::option($params, 'user', ini_get('mysqli.default_user')),
-			self::option($params, 'pass', ini_get('mysqli.default_pw')),
-			self::option($params, 'db', self::option($params, 'database', ''))
+			self::option($this->params, 'host', ini_get('mysqli.default_host')),
+			self::option($this->params, 'user', ini_get('mysqli.default_user')),
+			self::option($this->params, 'pass', ini_get('mysqli.default_pw')),
+			self::option($this->params, 'db', self::option($this->params, 'database', ''))
 		);
-		if ( isset($params['port']) || isset($params['socket']) || isset($params['flags']) ) {
-			$args[] = self::option($params, 'port', ini_get('mysqli.default_port'));
+		if ( isset($this->params['port']) || isset($this->params['socket']) || isset($this->params['flags']) ) {
+			$args[] = self::option($this->params, 'port', ini_get('mysqli.default_port'));
 
-			if ( isset($params['socket']) || isset($params['flags']) ) {
-				$args[] = self::option($params, 'socket', '');
+			if ( isset($this->params['socket']) || isset($this->params['flags']) ) {
+				$args[] = self::option($this->params, 'socket', '');
 
-				isset($params['flags']) and $args[] = $params['flags'];
+				isset($this->params['flags']) and $args[] = $this->params['flags'];
 			}
 		}
 
@@ -37,7 +39,8 @@ class db_mysql extends db_generic {
 			return $this->except('', $this->db->connect_error, $this->db->connect_errno);
 		}
 
-		$this->postConnect($params);
+		$this->params = false;
+		$this->postConnect($this->params);
 	}
 
 	protected function postConnect( $params ) {
@@ -79,6 +82,8 @@ class db_mysql extends db_generic {
 
 
 	public function query( $query, $params = array() ) {
+		$this->connect();
+
 		$query = $this->replaceholders($query, $params);
 		$this->queries[] = $query;
 
@@ -95,6 +100,8 @@ class db_mysql extends db_generic {
 	}
 
 	public function execute( $query, $params = array() ) {
+		$this->connect();
+
 		return $this->query($query, $params);
 	}
 

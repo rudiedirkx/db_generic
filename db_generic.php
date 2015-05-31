@@ -37,18 +37,19 @@ abstract class db_generic {
 		return implode(func_get_args());
 	}
 
-	public $queries = array();
+	protected $params = array();
 	protected $db;
+
+	public $queries = array();
 	public $metaCache = array();
 
-#	public $error = '';
-#	public $errno = 0;
-
-	// abstract static public function open( $args ); // E_STRICT doesn't like abstract static functions =(
-	abstract protected function __construct( $args );
-
-	protected function postConnect( $args ) {
+	static public function open( $params ) {
+		return new static($params);
 	}
+
+	abstract protected function __construct( $params );
+
+	protected function postConnect( $params ) {}
 
 	public function connected() {
 		return true;
@@ -399,6 +400,8 @@ abstract class db_generic {
 
 	public function stringifyConditions( $conditions, $delim = 'AND', $table = null ) {
 		if ( !is_string($conditions) ) {
+			$this->connect();
+
 			$sql = array();
 			foreach ( (array)$conditions AS $column => $value ) {
 				if ( is_int($column) ) {
