@@ -108,6 +108,8 @@ abstract class db_generic {
 	static public $replaceholder = '?';
 
 	public function replaceholders( $conditions, $params ) {
+		$this->connect();
+
 		$conditions = $this->stringifyConditions($conditions);
 
 		if ( array() === $params || null === $params || '' === $params ) {
@@ -399,9 +401,9 @@ abstract class db_generic {
 	}
 
 	public function stringifyConditions( $conditions, $delim = 'AND', $table = null ) {
-		if ( !is_string($conditions) ) {
-			$this->connect();
+		$this->connect();
 
+		if ( !is_string($conditions) ) {
 			$sql = array();
 			foreach ( (array)$conditions AS $column => $value ) {
 				if ( is_int($column) ) {
