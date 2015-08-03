@@ -949,11 +949,14 @@ class db_generic_record implements ArrayAccess {
 	}
 
 
-	public function __get( $name ) {
-		$function = 'get_' . $name;
-		if ( is_callable($method = array($this, $function)) ) {
-			return $this->$name = call_user_func($method);
+	public function &__get( $name ) {
+		$this->$name = NULL;
+
+		if ( is_callable($method = array($this, 'get_' . $name)) ) {
+			$this->$name = call_user_func($method);
 		}
+
+		return $this->$name;
 	}
 
 
