@@ -134,6 +134,7 @@ class db_sqlite extends db_generic {
 		$cache = &$this->metaCache[__FUNCTION__];
 
 		if ( empty($cache) ) {
+			$this->connect();
 			$cache = $this->select_by_field('sqlite_master', 'tbl_name', array(
 				'type' => 'table',
 			))->all();
@@ -146,6 +147,7 @@ class db_sqlite extends db_generic {
 		$cache = &$this->metaCache[__FUNCTION__];
 
 		if ( !isset($cache[$tableName]) ) {
+			$this->connect();
 			$cache[$tableName] = $this->fetch_by_field('PRAGMA table_info(?);', 'name', array($tableName))->all();
 		}
 

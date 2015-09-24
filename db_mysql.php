@@ -17,11 +17,13 @@ class db_mysql extends db_generic {
 
 		isset($this->params['timeout']) and $this->db->options(MYSQLI_OPT_CONNECT_TIMEOUT, $this->params['timeout']);
 
+		$this->database = self::option($this->params, 'db', self::option($this->params, 'database', ''));
+
 		$args = array(
 			self::option($this->params, 'host', ini_get('mysqli.default_host')),
 			self::option($this->params, 'user', ini_get('mysqli.default_user')),
 			self::option($this->params, 'pass', ini_get('mysqli.default_pw')),
-			self::option($this->params, 'db', self::option($this->params, 'database', ''))
+			$this->database,
 		);
 		if ( isset($this->params['port']) || isset($this->params['socket']) || isset($this->params['flags']) ) {
 			$args[] = self::option($this->params, 'port', ini_get('mysqli.default_port'));
@@ -137,6 +139,7 @@ class db_mysql extends db_generic {
 		$cache = &$this->metaCache[__FUNCTION__];
 
 		if ( empty($cache) ) {
+			$this->connect();
 			$cache = $this->fetch_by_field('show full tables from ' . $this->database . ' where Table_type = ?', 'Tables_in_' . $this->database, array('BASE TABLE'))->all();
 		}
 
@@ -147,6 +150,7 @@ class db_mysql extends db_generic {
 		$cache = &$this->metaCache[__FUNCTION__];
 
 		if ( !isset($cache[$tableName]) ) {
+			$this->connect();
 			$cache[$tableName] = $this->fetch_by_field('EXPLAIN ' . $this->escapeAndQuoteTable($tableName), 'Field')->all();
 		}
 
