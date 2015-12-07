@@ -51,14 +51,17 @@ class db_sqlite extends db_generic {
 
 
 	public function begin() {
+		$this->connect();
 		return $this->db->beginTransaction();
 	}
 
 	public function commit() {
+		$this->connect();
 		return $this->db->commit();
 	}
 
 	public function rollback() {
+		$this->connect();
 		return $this->db->rollBack();
 	}
 
@@ -102,11 +105,13 @@ class db_sqlite extends db_generic {
 	}
 
 	public function error( $error = null ) {
+		$this->connect();
 		$err = $this->db->errorInfo();
 		return $err[2];
 	}
 
 	public function errno( $errno = null ) {
+		$this->connect();
 		return $this->db->errorCode();
 	}
 
@@ -115,6 +120,7 @@ class db_sqlite extends db_generic {
 	}
 
 	public function insert_id() {
+		$this->connect();
 		return $this->db->lastInsertId();
 	}
 

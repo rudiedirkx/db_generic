@@ -108,22 +108,27 @@ class db_mysql extends db_generic {
 	}
 
 	public function error() {
+		$this->connect();
 		return $this->db->error;
 	}
 
 	public function errno() {
+		$this->connect();
 		return $this->db->errno;
 	}
 
 	public function affected_rows() {
+		$this->connect();
 		return $this->db->affected_rows;
 	}
 
 	public function insert_id() {
+		$this->connect();
 		return $this->db->insert_id;
 	}
 
 	public function escapeValue( $value ) {
+		$this->connect();
 		return $this->db->real_escape_string((string)$value);
 	}
 
