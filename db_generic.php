@@ -350,13 +350,17 @@ abstract class db_generic {
 
 	public function replace( $table, $values ) {
 		$values = array_map(array($this, 'escapeAndQuoteValue'), $values);
-		$sql = 'REPLACE INTO '.$this->escapeAndQuoteTable($table).' ('.implode(',', array_keys($values)).') VALUES ('.implode(',', $values).');';
+		$columns = array_map(array($this, 'escapeAndQuoteColumn'), array_keys($values));
+
+		$sql = 'REPLACE INTO ' . $this->escapeAndQuoteTable($table) . ' (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $values) . ')';
 		return $this->execute($sql);
 	}
 
 	public function insert( $table, $values ) {
 		$values = array_map(array($this, 'escapeAndQuoteValue'), $values);
-		$sql = 'INSERT INTO '.$this->escapeAndQuoteTable($table).' ('.implode(',', array_keys($values)).') VALUES ('.implode(',', $values).');';
+		$columns = array_map(array($this, 'escapeAndQuoteColumn'), array_keys($values));
+
+		$sql = 'INSERT INTO ' . $this->escapeAndQuoteTable($table) . ' (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $values) . ')';
 		return $this->execute($sql);
 	}
 
