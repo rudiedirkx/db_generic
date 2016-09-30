@@ -935,6 +935,12 @@ abstract class db_generic_result implements Iterator {
 
 class db_generic_record implements ArrayAccess {
 
+	public function __construct( $data = array() ) {
+		foreach ( $data as $key => $value ) {
+			$this->$key = $value;
+		}
+	}
+
 	public function offsetExists( $offset ) {
 		return property_exists($this, $offset);
 	}
