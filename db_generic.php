@@ -49,6 +49,8 @@ abstract class db_generic {
 
 	abstract protected function __construct( $params );
 
+	abstract public function connect();
+
 	protected function postConnect( $params ) {}
 
 	public function connected() {

@@ -1,6 +1,6 @@
 <?php
 
-require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'db_generic.php');
+require __DIR__ . '/db_generic.php';
 
 class db_sqlite extends db_generic {
 
@@ -10,7 +10,7 @@ class db_sqlite extends db_generic {
 		$this->params = $params;
 	}
 
-	protected function connect() {
+	public function connect() {
 		if ( $this->params === false ) return;
 
 		try {
