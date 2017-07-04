@@ -326,10 +326,10 @@ abstract class db_generic {
 		return $this->fetch($query, $options);
 	}
 
-	public function select_by_field( $table, $field, $conditions, $params = array() ) {
+	public function select_by_field( $table, $field, $conditions, $params = array(), $options = null ) {
 		$conditions = $this->replaceholders($conditions, $params);
 		$query = 'SELECT * FROM '.$this->escapeAndQuoteTable($table).' WHERE '.$conditions;
-		return $this->fetch_by_field($query, $field);
+		return $this->fetch_by_field($query, $field, $options);
 	}
 
 	public function select_fields( $table, $fields, $conditions, $params = array() ) {
@@ -385,10 +385,20 @@ abstract class db_generic {
 	}
 
 	public function insert( $table, $values ) {
-		$values = array_map(array($this, 'escapeAndQuoteValue'), $values);
-		$columns = array_map(array($this, 'escapeAndQuoteColumn'), array_keys($values));
+		return $this->inserts($table, array($values));
+	}
 
-		$sql = 'INSERT INTO ' . $this->escapeAndQuoteTable($table) . ' (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $values) . ')';
+	public function inserts( $table, $valueses, $defaults = array() ) {
+		if ( !$valueses ) return;
+
+		$columns = array_map(array($this, 'escapeAndQuoteColumn'), array_keys($valueses[0]));
+
+		foreach ( $valueses as $i => $values ) {
+			$values = array_map(array($this, 'escapeAndQuoteValue'), $values);
+			$valueses[$i] = '(' . implode(', ', $values) . ')';
+		}
+
+		$sql = 'INSERT INTO ' . $this->escapeAndQuoteTable($table) . ' (' . implode(', ', $columns) . ') VALUES ' . implode(', ', $valueses);
 		return $this->execute($sql);
 	}
 
