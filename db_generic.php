@@ -1043,6 +1043,42 @@ class db_generic_record implements ArrayAccess {
 
 
 
+abstract class db_generic_model extends db_generic_record {
+
+	static public $_db;
+
+	static public $_table = '';
+
+	static function all( $conditions, array $params = array() ) {
+		return static::$_db->select_by_field(static::$_table, 'id', $conditions, $params, array('class' => get_called_class()))->all();
+	}
+
+	static function first( $conditions, array $params = array() ) {
+		return static::$_db->select(static::$_table, $conditions, $params, array('class' => get_called_class()))->first();
+	}
+
+	static function find( $id ) {
+		return static::first(array('id' => $id));
+	}
+
+	static function presave( &$data ) {
+		$data = array_map('trim', $data);
+	}
+
+	function update( $data ) {
+		static::presave($data);
+		return static::$_db->update(static::$_table, $data, array('id' => $this->id));
+	}
+
+	function delete() {
+		return static::$_db->delete(static::$_table, array('id' => $this->id));
+	}
+
+
+}
+
+
+
 class db_generic_collection implements ArrayAccess, IteratorAggregate, Countable {
 
 	protected $items = array();
