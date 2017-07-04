@@ -231,6 +231,31 @@ abstract class db_generic {
 	abstract public function insert_id();
 
 
+	public function bad_query_template( $query ) {
+		$template = trim($query);
+		$template = preg_replace("#\s+#", ' ', $template);
+		$template = preg_replace("#'[0-9-a-z_-]+'#i", '%', $template);
+		$template = preg_replace("#%(, %)+#", '%', $template);
+		return $template;
+	}
+
+	public function bad_queries() {
+		$templates = array();
+		foreach ( $this->queries as $query ) {
+			$template = $this->bad_query_template($query);
+			$templates[$template][] = $query;
+		}
+
+		foreach ( $templates as $template => $queries ) {
+			if ( count($queries) < 2 ) {
+				unset($templates[$template]);
+			}
+		}
+
+		return $templates;
+	}
+
+
 	public function fetch_fields( $query, $params = array() ) {
 		return $this->fetch_fields_assoc($query, $params);
 	}
