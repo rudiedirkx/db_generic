@@ -40,6 +40,7 @@ abstract class db_generic {
 	protected $params = array();
 	protected $db;
 
+	public $returnAffectedRows = false;
 	public $queries = array();
 	public $metaCache = array();
 

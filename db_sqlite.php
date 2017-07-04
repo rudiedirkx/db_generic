@@ -70,7 +70,10 @@ class db_sqlite extends db_generic {
 		$this->connect();
 
 		$query = $this->replaceholders($query, $params);
-		$this->queries[] = $query;
+
+		if ( is_array($this->queries) ) {
+			$this->queries[] = $query;
+		}
 
 		try {
 			$q = @$this->db->query($query);
@@ -88,7 +91,10 @@ class db_sqlite extends db_generic {
 		$this->connect();
 
 		$query = $this->replaceholders($query, $params);
-		$this->queries[] = $query;
+
+		if ( is_array($this->queries) ) {
+			$this->queries[] = $query;
+		}
 
 		try {
 			$r = @$this->db->exec($query);

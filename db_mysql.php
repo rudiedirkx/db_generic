@@ -87,7 +87,10 @@ class db_mysql extends db_generic {
 		$this->connect();
 
 		$query = $this->replaceholders($query, $params);
-		$this->queries[] = $query;
+
+		if ( is_array($this->queries) ) {
+			$this->queries[] = $query;
+		}
 
 		try {
 			$q = @$this->db->query($query);
@@ -102,9 +105,8 @@ class db_mysql extends db_generic {
 	}
 
 	public function execute( $query, $params = array() ) {
-		$this->connect();
-
-		return $this->query($query, $params);
+		$ok = $this->query($query, $params);
+		return $this->returnAffectedRows ? $this->affected_rows() : $ok;
 	}
 
 	public function error() {
