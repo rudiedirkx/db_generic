@@ -626,6 +626,37 @@ abstract class db_generic {
 	// @TODO in db_mysql
 	//abstract public function index( $tableName, $indexName, $indexDefinition = null, $returnSQL = false );
 
+	public function needsSchemaUpdate($schema) {
+		if ( !isset($schema['version']) ) {
+			return false;
+		}
+
+		return (float) $schema['version'] > $this->getSchemaVersion();
+	}
+
+	public function setSchemaVersion($version) {
+		$this->update('_version', array('_version' => $version), '1');
+	}
+
+	public function getSchemaVersion() {
+		try {
+			return (float) $this->select_one('_version', '_version', '1');
+		}
+		catch (db_exception $ex) {
+			try {
+				$this->table('_version', array('_version'));
+			}
+			catch (db_exception $ex) {}
+
+			try {
+				$this->insert('_version', array('_version' => 0));
+			}
+			catch (db_exception $ex) {}
+		}
+
+		return 0.0;
+	}
+
 	public function buildSelectQuery($query) {
 		$sql = array();
 
