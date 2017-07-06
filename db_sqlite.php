@@ -194,6 +194,9 @@ class db_sqlite extends db_generic {
 			else {
 				// type
 				$type = isset($details['type']) ? strtoupper($details['type']) : 'TEXT';
+				if (  in_array($type, array('DATE', 'TIME', 'DATETIME')) ) {
+					$type = 'TEXT';
+				}
 				isset($details['unsigned']) && $type = 'INT';
 				$properties[] = $type;
 

@@ -1058,7 +1058,44 @@ abstract class db_generic_model extends db_generic_record {
 	}
 
 	static function find( $id ) {
-		return static::first(array('id' => $id));
+		return $id ? static::first(array('id' => $id)) : null;
+	}
+
+	static function insert( array $data ) {
+		static::presave($data);
+
+		if ( static::$_db->insert(static::$_table, $data) ) {
+			$id = static::$_db->insert_id();
+			return $id ?: true;
+		}
+
+		return false;
+	}
+
+	static function deleteAll( $conditions, array $params = array() ) {
+		$result = static::$_db->delete(static::$_table, $conditions, $params);
+		if ( $result === false ) {
+			return false;
+		}
+
+		if ( static::$_db->returnAffectedRows ) {
+			return $result;
+		}
+
+		return static::$_db->affected_rows();
+	}
+
+	static function updateAll( array $updates, $conditions, array $params = array() ) {
+		$result = static::$_db->update(static::$_table, $updates, $conditions, $params);
+		if ( $result === false ) {
+			return false;
+		}
+
+		if ( static::$_db->returnAffectedRows ) {
+			return $result;
+		}
+
+		return static::$_db->affected_rows();
 	}
 
 	static function presave( &$data ) {
