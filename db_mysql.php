@@ -210,6 +210,8 @@ class db_mysql extends db_generic {
 
 				isset($details['size']) && $type .= '(' . (int)$details['size'] . ')';
 
+				isset($details['options']) && $type .= '(' . implode(', ', array_map(array($this, 'escapeAndQuote'), $details['options'])) . ')';
+
 				$properties[] = $type;
 
 				// constraints

@@ -1,7 +1,13 @@
 <?php
 
 require 'inc.connect.php';
-$db->execute('PRAGMA foreign_keys = ON');
+
+try {
+	$db->execute('PRAGMA foreign_keys = ON');
+}
+catch ( db_exception $ex ) {
+	// SQLite only, fine
+}
 
 $schema = array(
 	'relationships' => true,
@@ -41,7 +47,13 @@ $schema = array(
 	),
 );
 
-var_dump($db->schema($schema));
+try {
+	var_dump($db->schema($schema));
+}
+catch ( db_exception $ex ) {
+	echo $ex->getQuery();
+	exit(1);
+}
 
 echo "\n";
 

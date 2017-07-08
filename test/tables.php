@@ -4,8 +4,8 @@ require 'inc.connect.php';
 
 // create table `stuffs`
 $definition = array(
-  'id' => array('pk' => true),
-  'stuff' => array('type' => 'text', 'default' => 'a'),
+	'id' => array('pk' => true),
+	'stuff' => array('type' => 'varchar', 'default' => 'a'),
 );
 var_dump($db->table('stuffs', $definition));
 
