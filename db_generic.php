@@ -467,7 +467,7 @@ abstract class db_generic {
 		return $conditions;
 	}
 
-	public function schema($schema) {
+	public function schema( $schema, $returnSQL = false ) {
 		// format
 		if ( !isset($schema['tables']) ) {
 			$schema = array('tables' => $schema);
@@ -483,7 +483,7 @@ abstract class db_generic {
 			}
 
 			// ensure table
-			$created = $this->table($tableName, $tableDefinition);
+			$created = $this->table($tableName, $tableDefinition, $returnSQL);
 
 			if ( null !== $created ) {
 				// feedback
@@ -499,7 +499,7 @@ abstract class db_generic {
 					}
 
 					// ensure column
-					$created = $this->column($tableName, $columnName, $columnDefinition);
+					$created = $this->column($tableName, $columnName, $columnDefinition, $returnSQL);
 
 					// save result for feedback
 					if ( null !== $created ) {
@@ -1059,6 +1059,10 @@ abstract class db_generic_model extends db_generic_record {
 
 	static function find( $id ) {
 		return $id ? static::first(array('id' => $id)) : null;
+	}
+
+	static function count( $conditions, array $params = array() ) {
+		return static::$_db->count(static::$_table, $conditions, $params);
 	}
 
 	static function insert( array $data ) {

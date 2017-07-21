@@ -229,8 +229,8 @@ class db_sqlite extends db_generic {
 
 				// foreign key relationship
 				if ( isset($details['references']) ) {
-					list($tbl, $col) = $details['references'];
-					$properties[] = 'REFERENCES ' . $tbl . '(' . $col . ')';
+					list($tbl, $col, $onDelete) = array_merge($details['references'], array('restrict'));
+					$properties[] = 'REFERENCES ' . $tbl . '(' . $col . ') ON DELETE ' . strtoupper($onDelete);
 				}
 
 				// Case-insensitive (not the default in SQLite)
