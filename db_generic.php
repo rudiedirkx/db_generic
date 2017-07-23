@@ -1049,6 +1049,8 @@ abstract class db_generic_model extends db_generic_record {
 
 	static public $_table = '';
 
+	static public $_cache = [];
+
 	static function all( $conditions, array $params = array() ) {
 		return static::$_db->select_by_field(static::$_table, 'id', $conditions, $params, array('class' => get_called_class()))->all();
 	}
@@ -1058,7 +1060,16 @@ abstract class db_generic_model extends db_generic_record {
 	}
 
 	static function find( $id ) {
-		return $id ? static::first(array('id' => $id)) : null;
+		if ( $id ) {
+			if ( static::$_cache !== false && isset(static::$_cache[$id]) ) {
+				return static::$_cache[$id];
+			}
+			$object = static::first(array('id' => $id)) ?: false;
+			if ( static::$_cache !== false ) {
+				static::$_cache[$id] = $object;
+			}
+			return $object;
+		}
 	}
 
 	static function count( $conditions, array $params = array() ) {
