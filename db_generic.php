@@ -1061,12 +1061,13 @@ abstract class db_generic_model extends db_generic_record {
 
 	static function find( $id ) {
 		if ( $id ) {
-			if ( static::$_cache !== false && isset(static::$_cache[$id]) ) {
-				return static::$_cache[$id];
+			$class = get_called_class();
+			if ( self::$_cache !== false && isset(self::$_cache[$class][$id]) ) {
+				return self::$_cache[$class][$id];
 			}
 			$object = static::first(array('id' => $id)) ?: false;
-			if ( static::$_cache !== false ) {
-				static::$_cache[$id] = $object;
+			if ( self::$_cache !== false ) {
+				self::$_cache[$class][$id] = $object;
 			}
 			return $object;
 		}
