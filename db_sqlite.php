@@ -229,7 +229,7 @@ class db_sqlite extends db_generic {
 
 				// foreign key relationship
 				if ( isset($details['references']) ) {
-					list($tbl, $col, $onDelete) = array_merge($details['references'], array('restrict'));
+					list($tbl, $col, $onDelete) = array_merge(array_filter($details['references']), array('restrict'));
 					$properties[] = 'REFERENCES ' . $tbl . '(' . $col . ') ON DELETE ' . strtoupper($onDelete);
 				}
 

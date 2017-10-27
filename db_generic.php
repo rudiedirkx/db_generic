@@ -44,6 +44,7 @@ abstract class db_generic {
 	public $queries = array();
 	public $metaCache = array();
 
+	/** @return db_generic */
 	static public function open( $params ) {
 		return new static($params);
 	}
@@ -190,6 +191,7 @@ abstract class db_generic {
 		return array_merge($exotics, compact('class', 'first', 'params'));
 	}
 
+	/** @return db_generic_result */
 	public function fetch( $query, $options = null ) {
 		// unravel options
 		$options = self::fetch_options($options);
@@ -930,11 +932,11 @@ abstract class db_generic_result implements Iterator {
 		if ( $this->firstRecord ) {
 			$object = $this->firstRecord;
 			$this->firstRecord = null;
-			return $object;
+			return $this->init($object);
 		}
 
 		if ( !$this->mappers && !$this->filters ) {
-			return $this->nextObject($this->options['args']);
+			return $this->init($this->nextObject($this->options['args']));
 		}
 
 		while ( $object = $this->nextObject($this->options['args']) ) {
@@ -958,8 +960,16 @@ abstract class db_generic_result implements Iterator {
 				}
 			}
 
-			return $object;
+			return $this->init($object);
 		}
+	}
+
+	public function init( $object ) {
+		if ( $object instanceof db_generic_model ) {
+			$object->init();
+		}
+
+		return $object;
 	}
 
 	public function first() {
@@ -1045,20 +1055,24 @@ class db_generic_record implements ArrayAccess {
 
 abstract class db_generic_model extends db_generic_record {
 
+	/** @var db_generic */
 	static public $_db;
 
 	static public $_table = '';
 
 	static public $_cache = [];
 
+	/** @return static[] */
 	static function all( $conditions, array $params = array() ) {
 		return static::$_db->select_by_field(static::$_table, 'id', $conditions, $params, array('class' => get_called_class()))->all();
 	}
 
+	/** @return static */
 	static function first( $conditions, array $params = array() ) {
 		return static::$_db->select(static::$_table, $conditions, $params, array('class' => get_called_class()))->first();
 	}
 
+	/** @return static */
 	static function find( $id ) {
 		if ( $id ) {
 			$class = get_called_class();
@@ -1073,10 +1087,12 @@ abstract class db_generic_model extends db_generic_record {
 		}
 	}
 
+	/** @return int */
 	static function count( $conditions, array $params = array() ) {
 		return static::$_db->count(static::$_table, $conditions, $params);
 	}
 
+	/** @return int|bool */
 	static function insert( array $data ) {
 		static::presave($data);
 
@@ -1088,6 +1104,7 @@ abstract class db_generic_model extends db_generic_record {
 		return false;
 	}
 
+	/** @return int|bool */
 	static function deleteAll( $conditions, array $params = array() ) {
 		$result = static::$_db->delete(static::$_table, $conditions, $params);
 		if ( $result === false ) {
@@ -1101,6 +1118,7 @@ abstract class db_generic_model extends db_generic_record {
 		return static::$_db->affected_rows();
 	}
 
+	/** @return int|bool */
 	static function updateAll( array $updates, $conditions, array $params = array() ) {
 		$result = static::$_db->update(static::$_table, $updates, $conditions, $params);
 		if ( $result === false ) {
@@ -1114,17 +1132,24 @@ abstract class db_generic_model extends db_generic_record {
 		return static::$_db->affected_rows();
 	}
 
+	/** @return void */
 	static function presave( &$data ) {
 		$data = array_map(function($datum) {
 			return is_null($datum) ? null : (is_scalar($datum) ? trim($datum) : array_filter($datum));
 		}, $data);
 	}
 
+	/** @return void */
+	function init() {
+	}
+
+	/** @return bool */
 	function update( $data ) {
 		static::presave($data);
 		return static::$_db->update(static::$_table, $data, array('id' => $this->id));
 	}
 
+	/** @return bool */
 	function delete() {
 		return static::$_db->delete(static::$_table, array('id' => $this->id));
 	}
