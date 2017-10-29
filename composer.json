@@ -9,5 +9,8 @@
             "email": "github@hotblocks.nl"
         }
     ],
+    "autoload": {
+        "classmap": ["db_mysql.php", "db_sqlite.php"]
+    },
     "require": {}
 }
