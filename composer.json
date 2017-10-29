@@ -10,7 +10,7 @@
         }
     ],
     "autoload": {
-        "classmap": ["db_mysql.php", "db_sqlite.php"]
+        "classmap": ["db_generic.php", "db_mysql.php", "db_sqlite.php"]
     },
     "require": {}
 }
