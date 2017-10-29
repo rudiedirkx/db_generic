@@ -1,0 +1,13 @@
+{
+    "name": "rdx/db",
+    "description": "Simple MySQL/SQLite wrapper",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Rudie Dirkx",
+            "email": "github@hotblocks.nl"
+        }
+    ],
+    "require": {}
+}
