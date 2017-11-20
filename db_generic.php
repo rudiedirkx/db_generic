@@ -1062,28 +1062,40 @@ abstract class db_generic_model extends db_generic_record {
 
 	static public $_cache = [];
 
+	static function _modelToCache( $object ) {
+		if ( self::$_cache !== false ) {
+			if ( $object instanceof self ) {
+				self::$_cache[get_class($object)][$object->id] = $object;
+			}
+		}
+		return $object;
+	}
+
+	static function _modelFromCache( $class, $id ) {
+		if ( self::$_cache !== false ) {
+			if ( isset(self::$_cache[$class][$id]) ) {
+				return self::$_cache[$class][$id];
+			}
+		}
+	}
+
 	/** @return static[] */
 	static function all( $conditions, array $params = array() ) {
-		return static::$_db->select_by_field(static::$_table, 'id', $conditions, $params, array('class' => get_called_class()))->all();
+		return array_map([__CLASS__, '_modelToCache'], static::$_db->select_by_field(static::$_table, 'id', $conditions, $params, array('class' => get_called_class()))->all());
 	}
 
 	/** @return static */
 	static function first( $conditions, array $params = array() ) {
-		return static::$_db->select(static::$_table, $conditions, $params, array('class' => get_called_class()))->first();
+		return self::_modelToCache(static::$_db->select(static::$_table, $conditions, $params, array('class' => get_called_class()))->first());
 	}
 
 	/** @return static */
 	static function find( $id ) {
 		if ( $id ) {
-			$class = get_called_class();
-			if ( self::$_cache !== false && isset(self::$_cache[$class][$id]) ) {
-				return self::$_cache[$class][$id];
+			if ( $object = self::_modelFromCache(get_called_class(), $id) ) {
+				return $object;
 			}
-			$object = static::first(array('id' => $id)) ?: false;
-			if ( self::$_cache !== false ) {
-				self::$_cache[$class][$id] = $object;
-			}
-			return $object;
+			return static::first(array('id' => $id));
 		}
 	}
 
