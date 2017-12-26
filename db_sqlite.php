@@ -1,7 +1,5 @@
 <?php
 
-require __DIR__ . '/db_generic.php';
-
 class db_sqlite extends db_generic {
 
 	public $affected = 0;

@@ -1080,6 +1080,11 @@ abstract class db_generic_model extends db_generic_record {
 	}
 
 	/** @return static[] */
+	static function query( $query, array $params = array() ) {
+		return static::$_db->fetch_by_field($query, 'id', array('params' => $params, 'class' => get_called_class()))->all();
+	}
+
+	/** @return static[] */
 	static function all( $conditions, array $params = array() ) {
 		return array_map([__CLASS__, '_modelToCache'], static::$_db->select_by_field(static::$_table, 'id', $conditions, $params, array('class' => get_called_class()))->all());
 	}

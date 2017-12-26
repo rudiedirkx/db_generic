@@ -1,7 +1,5 @@
 <?php
 
-require __DIR__ . '/db_mysql.php';
-
 class db_mysql_pdo extends db_mysql {
 
 	public function connect() {

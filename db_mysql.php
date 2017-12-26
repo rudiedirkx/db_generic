@@ -1,7 +1,5 @@
 <?php
 
-require __DIR__ . '/db_generic.php';
-
 class db_mysql extends db_generic {
 
 	protected $database = '';
