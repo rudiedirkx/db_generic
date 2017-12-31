@@ -636,6 +636,23 @@ abstract class db_generic {
 		return (float) $schema['version'] > $this->getSchemaVersion();
 	}
 
+	public function ensureSchema($schema) {
+		$this->execute('PRAGMA foreign_keys = ON');
+
+		if ( $this->needsSchemaUpdate($schema) ) {
+			try {
+				$this->schema($schema);
+				$this->setSchemaVersion($schema['version']);
+			}
+			catch (db_exception $ex) {
+				echo '<pre>';
+				echo "ERROR: " . $ex->getMessage() . "\n\n";
+				echo "QUERY: " . $ex->query . "\n\n";
+				exit((string) $ex);
+			}
+		}
+	}
+
 	public function setSchemaVersion($version) {
 		$this->update('_version', array('_version' => $version), '1');
 	}
