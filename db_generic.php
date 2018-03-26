@@ -109,6 +109,8 @@ abstract class db_generic {
 		throw new db_exception($error, $errno, array('query' => $query));
 	}
 
+	abstract public function enableForeignKeys();
+
 	static public $replaceholder = '?';
 
 	public function replaceholders( $conditions, $params ) {
@@ -636,13 +638,14 @@ abstract class db_generic {
 		return (float) $schema['version'] > $this->getSchemaVersion();
 	}
 
-	public function ensureSchema($schema) {
-		$this->execute('PRAGMA foreign_keys = ON');
+	public function ensureSchema($schema, callable $callback = null) {
+		$this->enableForeignKeys();
 
 		if ( $this->needsSchemaUpdate($schema) ) {
 			try {
-				$this->schema($schema);
+				$changes = $this->schema($schema);
 				$this->setSchemaVersion($schema['version']);
+				$callback and $callback($changes);
 			}
 			catch (db_exception $ex) {
 				echo '<pre>';

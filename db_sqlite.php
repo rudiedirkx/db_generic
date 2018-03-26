@@ -48,6 +48,11 @@ class db_sqlite extends db_generic {
 	}
 
 
+	public function enableForeignKeys() {
+		return $this->execute('PRAGMA foreign_keys = ON');
+	}
+
+
 	public function begin() {
 		$this->connect();
 		return $this->db->beginTransaction();

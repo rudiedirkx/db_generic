@@ -68,6 +68,10 @@ class db_mysql extends db_generic {
 	}
 
 
+	public function enableForeignKeys() {
+	}
+
+
 	public function begin() {
 		return $this->execute('BEGIN');
 	}
