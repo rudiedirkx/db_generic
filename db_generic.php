@@ -630,12 +630,12 @@ abstract class db_generic {
 	// @TODO in db_mysql
 	//abstract public function index( $tableName, $indexName, $indexDefinition = null, $returnSQL = false );
 
-	public function needsSchemaUpdate($schema) {
+	protected function needsSchemaUpdate($schema) {
 		if ( !isset($schema['version']) ) {
 			return false;
 		}
 
-		return (float) $schema['version'] > $this->getSchemaVersion();
+		return !$this->hasSchemaVersion($schema['version']);
 	}
 
 	public function ensureSchema($schema, callable $callback = null) {
@@ -656,27 +656,25 @@ abstract class db_generic {
 		}
 	}
 
-	public function setSchemaVersion($version) {
-		$this->update('_version', array('_version' => $version), '1');
+	protected function setSchemaVersion($version) {
+		try {
+			$this->insert('_version', array('_version' => $version));
+		}
+		catch (db_exception $ex) {}
 	}
 
-	public function getSchemaVersion() {
+	protected function hasSchemaVersion($version) {
 		try {
-			return (float) $this->select_one('_version', '_version', '1');
+			return $this->count('_version', ['_version' => $version]) > 0;
 		}
 		catch (db_exception $ex) {
 			try {
-				$this->table('_version', array('_version'));
-			}
-			catch (db_exception $ex) {}
-
-			try {
-				$this->insert('_version', array('_version' => 0));
+				$this->table('_version', ['_version' => ['unique' => true]]);
 			}
 			catch (db_exception $ex) {}
 		}
 
-		return 0.0;
+		return false;
 	}
 
 	public function buildSelectQuery($query) {
