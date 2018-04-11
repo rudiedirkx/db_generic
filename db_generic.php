@@ -1103,8 +1103,9 @@ abstract class db_generic_model extends db_generic_record {
 	}
 
 	/** @return static[] */
-	static function all( $conditions, array $params = array() ) {
-		return array_map([__CLASS__, '_modelToCache'], static::$_db->select_by_field(static::$_table, 'id', $conditions, $params, array('class' => get_called_class()))->all());
+	static function all( $conditions, array $params = array(), array $options = [] ) {
+		$options += ['id' => 'id', 'class' => get_called_class()];
+		return array_map([__CLASS__, '_modelToCache'], static::$_db->select_by_field(static::$_table, $options['id'], $conditions, $params, $options)->all());
 	}
 
 	/** @return static */
@@ -1137,6 +1138,16 @@ abstract class db_generic_model extends db_generic_record {
 		}
 
 		return false;
+	}
+
+	/** @return bool */
+	static function insertAll( array $datas ) {
+		foreach ( $datas as &$data ) {
+			static::presave($data);
+			unset($data);
+		}
+
+		return static::$_db->inserts(static::$_table, $datas);
 	}
 
 	/** @return int|bool */
