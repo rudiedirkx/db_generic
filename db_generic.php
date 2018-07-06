@@ -624,11 +624,9 @@ abstract class db_generic {
 
 	abstract public function column( $tableName, $columnName, $columnDefinition = null, $returnSQL = false );
 
-	// @TODO in db_mysql
-	//abstract public function indexes( $tableName );
+	abstract public function indexes( $tableName );
 
-	// @TODO in db_mysql
-	//abstract public function index( $tableName, $indexName, $indexDefinition = null, $returnSQL = false );
+	abstract public function index( $tableName, $indexName, $indexDefinition = null, $returnSQL = false );
 
 	protected function needsSchemaUpdate($schema) {
 		if ( !isset($schema['version']) ) {
@@ -1202,82 +1200,149 @@ abstract class db_generic_model extends db_generic_record {
 
 
 	public function to_one( $targetClass, $foreignColumn ) {
-		return new db_generic_relationship_one($targetClass, $foreignColumn);
+		return new db_generic_relationship_one($this, $targetClass, $foreignColumn);
 	}
 
 	public function to_many( $targetClass, $foreignColumn ) {
-		return new db_generic_relationship_many($targetClass, $foreignColumn);
+		return new db_generic_relationship_many($this, $targetClass, $foreignColumn);
 	}
 
 	public function to_count( $targetClass, $foreignColumn ) {
-		return new db_generic_relationship_count($targetClass, $foreignColumn);
+		return new db_generic_relationship_count($this, $targetClass, $foreignColumn);
 	}
 
 	public function to_many_through( $targetClass, $throughTable, $foreignColumn, $foreignColumnRight ) {
-		return new db_generic_relationship_many_through($targetClass, $throughTable, $foreignColumn, $foreignColumnRight);
+		return new db_generic_relationship_many_through($this, $targetClass, $throughTable, $foreignColumn, $foreignColumnRight);
 	}
 
 	public function to_many_scalar( $targetColumn, $throughTable, $foreignColumn ) {
-		return new db_generic_relationship_many_scalar($targetColumn, $throughTable, $foreignColumn);
+		return new db_generic_relationship_many_scalar($this, $targetColumn, $throughTable, $foreignColumn);
 	}
 
 	public function &__get( $name ) {
 		if ( is_callable($method = array($this, 'relate_' . $name)) ) {
-			$this->$name = call_user_func($method)->resolve($this);
+			$this->$name = call_user_func($method)->lazy($name);
 			return $this->$name;
 		}
 
 		return parent::__get($name);
 	}
 
+	static public function eager( $name, array $objects ) {
+		$relationship = call_user_func([new static(), "relate_$name"]);
+		return $relationship->eager($name, $objects);
+	}
+
 
 }
 
-// @todo Eager load relationships with `resolveMany( array $objects )`
-
 abstract class db_generic_relationship {
+	protected $source;
 	protected $target;
 	protected $foreign;
 	protected $order;
 
-	public function __construct( $target, $foreign ) {
-		$this->target = $target;
-		$this->foreign = $foreign;
+	public function __construct( db_generic_model $source = null, $targetClass, $foreignColumn ) {
+		$this->source = $source;
+		$this->target = $targetClass;
+		$this->foreign = $foreignColumn;
 	}
 
-	abstract public function resolve( db_generic_model $source );
+	abstract public function lazy( $name );
+
+	abstract public function eager( $name, array $objects );
 
 	public function order( $order ) {
 		$this->order = $order;
 		return $this;
 	}
 
-	protected function getWhereOrder( array $conditions ) {
-		$target = $this->target;
-		$db = $target::$_db;
+	protected function db() {
+		$source = $this->source;
+		return $source::$_db;
+	}
 
+	protected function getWhereOrder( array $conditions ) {
+		$db = $this->db();
 		$conditions = $db->stringifyConditions($conditions);
 		$order = $this->order ? " ORDER BY {$this->order}" : '';
 		return $conditions . $order;
 	}
+
+	protected function getForeignIds( array $objects, $column ) {
+		return array_map(function($object) use ($column) {
+			return $object->$column;
+		}, $objects);
+	}
 }
 
 class db_generic_relationship_one extends db_generic_relationship {
-	public function resolve( db_generic_model $source ) {
-		return call_user_func([$this->target, 'find'], $source->{$this->foreign});
+	public function lazy( $name ) {
+		return call_user_func([$this->target, 'find'], $this->source->{$this->foreign});
+	}
+
+	public function eager( $name, array $objects ) {
+		$foreignColumn = $this->foreign;
+
+		$foreignIds = $this->getForeignIds($objects, $foreignColumn);
+		$targets = call_user_func([$this->target, 'all'], ['id' => array_unique($foreignIds)]);
+
+		foreach ( $objects as $object ) {
+			$object->$name = @$targets[$object->$foreignColumn];
+		}
+
+		return $targets;
 	}
 }
 
 class db_generic_relationship_many extends db_generic_relationship {
-	public function resolve( db_generic_model $source ) {
-		$where = $this->getWhereOrder([$this->foreign => $source->id]);
-		return call_user_func([$this->target, 'all'], "$where$order");
+	public function lazy( $name ) {
+		$where = $this->getWhereOrder([$this->foreign => $this->source->id]);
+		return call_user_func([$this->target, 'all'], $where);
+	}
+
+	public function eager( $name, array $objects ) {
+		$ids = array_flip($this->getForeignIds($objects, 'id'));
+		$foreignColumn = $this->foreign;
+		$where = $this->getWhereOrder([$foreignColumn => array_keys($ids)]);
+
+		$targets = call_user_func([$this->target, 'all'], $where);
+
+		foreach ( $objects as $object ) {
+			$object->$name = [];
+		}
+
+		foreach ( $targets as $target ) {
+			$object = $objects[ $ids[ $target->$foreignColumn ] ];
+			$object->$name[] = $target;
+		}
+
+		return $targets;
 	}
 }
 
 class db_generic_relationship_count extends db_generic_relationship {
-	public function resolve( db_generic_model $source ) {
-		return call_user_func([$this->target, 'count'], [$this->foreign => $source->id]);
+	public function lazy( $name ) {
+		$db = $this->db();
+		return $db->count($this->target, [$this->foreign => $this->source->id]);
+	}
+
+	public function eager( $name, array $objects ) {
+		$db = $this->db();
+
+		$ids = array_flip($this->getForeignIds($objects, 'id'));
+		$foreignColumn = $this->foreign;
+		$qForeignColumn = $db->quoteColumn($foreignColumn);
+		$where = $this->getWhereOrder([$foreignColumn => array_keys($ids)]);
+		$where .= ' GROUP BY ' . $qForeignColumn;
+
+		$targets = $db->select_fields($this->target, $qForeignColumn . ', COUNT(1)', $where);
+
+		foreach ( $ids as $id => $index ) {
+			$objects[$index]->$name = @$targets[$id] ?: 0;
+		}
+
+		return [];
 	}
 }
 
@@ -1285,34 +1350,76 @@ class db_generic_relationship_many_through extends db_generic_relationship {
 	protected $throughTable;
 	protected $foreignRight;
 
-	public function __construct( $target, $throughTable, $foreign, $foreignRight ) {
-		parent::__construct($target, $foreign);
+	public function __construct( db_generic_model $source = null, $target, $throughTable, $foreign, $foreignRight ) {
+		parent::__construct($source, $target, $foreign);
 
 		$this->throughTable = $throughTable;
 		$this->foreignRight = $foreignRight;
 	}
 
-	public function resolve( db_generic_model $source ) {
-		$db = $source::$_db;
-		$rightIds = $db->select_fields_numeric($this->throughTable, $this->foreignRight, [$this->foreign => $source->id]);
+	public function lazy( $name ) {
+		$db = $this->db();
+		$rightIds = $db->select_fields_numeric($this->throughTable, $this->foreignRight, [$this->foreign => $this->source->id]);
 
 		$where = $this->getWhereOrder(['id' => $rightIds]);
 		return call_user_func([$this->target, 'all'], $where);
+	}
+
+	public function eager( $name, array $objects ) {
+		$db = $this->db();
+
+		$ids = array_flip($this->getForeignIds($objects, 'id'));
+
+		$links = $db->select($this->throughTable, [$this->foreign => array_keys($ids)])->all();
+
+		$targetIds = $this->getForeignIds($links, $this->foreignRight);
+
+		$where = $this->getWhereOrder(['id' => array_unique($targetIds)]);
+		$targets = call_user_func([$this->target, 'all'], $where);
+
+		foreach ( $objects as $object ) {
+			$object->$name = [];
+		}
+
+		foreach ( $links as $link ) {
+			$target = $targets[$link->{$this->foreignRight}];
+			$objects[ $ids[$link->{$this->foreign}] ]->$name[$target->id] = $target;
+		}
+
+		return $targets;
 	}
 }
 
 class db_generic_relationship_many_scalar extends db_generic_relationship {
 	protected $throughTable;
 
-	public function __construct( $targetColumn, $throughTable, $foreignColumn ) {
-		parent::__construct($targetColumn, $foreignColumn);
+	public function __construct( db_generic_model $source = null, $targetColumn, $throughTable, $foreignColumn ) {
+		parent::__construct($source, $targetColumn, $foreignColumn);
 
 		$this->throughTable = $throughTable;
 	}
 
-	public function resolve( db_generic_model $source ) {
-		$db = $source::$_db;
-		return $db->select_fields_numeric($this->throughTable, $this->target, [$this->foreign => $source->id]);
+	public function lazy( $name ) {
+		$db = $this->db();
+		return $db->select_fields_numeric($this->throughTable, $this->target, [$this->foreign => $this->source->id]);
+	}
+
+	public function eager( $name, array $objects ) {
+		$db = $this->db();
+
+		$ids = array_flip($this->getForeignIds($objects, 'id'));
+
+		$links = $db->select($this->throughTable, [$this->foreign => array_keys($ids)])->all();
+
+		foreach ( $objects as $object ) {
+			$object->$name = [];
+		}
+
+		foreach ( $links as $link ) {
+			$objects[ $ids[$link->{$this->foreign}] ]->$name[] = $link->{$this->target};
+		}
+
+		return [];
 	}
 }
 
