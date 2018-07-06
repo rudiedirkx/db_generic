@@ -345,13 +345,13 @@ abstract class db_generic {
 			$fields = implode(', ', array_map(array($this, 'escapeAndQuoteColumn'), (array)$fields));
 		}
 		$conditions = $this->replaceholders($conditions, $params);
-		$query = 'SELECT '.$fields.' FROM '.$this->escapeAndQuoteTable($table).' WHERE '.$conditions;
+		$query = 'SELECT ' . $fields . ' FROM ' . $this->escapeAndQuoteTable($table) . ' WHERE ' . $conditions;
 		return $this->fetch_fields_assoc($query);
 	}
 
 	public function select_fields_numeric( $table, $field, $conditions, $params = array() ) {
 		$conditions = $this->replaceholders($conditions, $params);
-		$query = 'SELECT '.$field.' FROM '.$this->escapeAndQuoteTable($table).' WHERE '.$conditions;
+		$query = 'SELECT ' . $this->quoteColumn($field) . ' FROM ' . $this->escapeAndQuoteTable($table) . ' WHERE ' . $conditions;
 		return $this->fetch_fields_numeric($query);
 	}
 
@@ -864,7 +864,7 @@ abstract class db_generic_result implements Iterator {
 	}
 
 	public function key() {
-		if ( isset($this->options['by_field']) ) {
+		if ( isset($this->options['by_field']) && property_exists($this->record, $this->options['by_field']) ) {
 			return $this->record->{$this->options['by_field']};
 		}
 		return $this->index;
@@ -1082,7 +1082,7 @@ abstract class db_generic_model extends db_generic_record {
 
 	static function _modelToCache( $object ) {
 		if ( self::$_cache !== false ) {
-			if ( $object instanceof self ) {
+			if ( $object instanceof self && property_exists($object, 'id') ) {
 				self::$_cache[get_class($object)][$object->id] = $object;
 			}
 		}
@@ -1201,6 +1201,100 @@ abstract class db_generic_model extends db_generic_record {
 	}
 
 
+	public function relate_one( $target, $foreign ) {
+		return new db_generic_relationship_one($target, $foreign);
+	}
+
+	public function relate_many( $target, $foreign ) {
+		return new db_generic_relationship_many($target, $foreign);
+	}
+
+	public function relate_count( $target, $foreign ) {
+		return new db_generic_relationship_count($target, $foreign);
+	}
+
+	public function relate_many_through( $target, $throughTable, $foreign, $foreignRight ) {
+		return new db_generic_relationship_many_through($target, $throughTable, $foreign, $foreignRight);
+	}
+
+	public function &__get( $name ) {
+		if ( is_callable($method = array($this, 'relate_' . $name)) ) {
+			$this->$name = call_user_func($method)->resolve($this);
+			return $this->$name;
+		}
+
+		return parent::__get($name);
+	}
+
+
+}
+
+// @todo Eager load relationships with `resolveMany( array $objects )`
+
+abstract class db_generic_relationship {
+	protected $target;
+	protected $foreign;
+	protected $order;
+
+	public function __construct( $target, $foreign ) {
+		$this->target = $target;
+		$this->foreign = $foreign;
+	}
+
+	abstract public function resolve( db_generic_model $source );
+
+	public function order( $order ) {
+		$this->order = $order;
+		return $this;
+	}
+
+	protected function getWhereOrder( array $conditions ) {
+		$target = $this->target;
+		$db = $target::$_db;
+
+		$conditions = $db->stringifyConditions($conditions);
+		$order = $this->order ? " ORDER BY {$this->order}" : '';
+		return $conditions . $order;
+	}
+}
+
+class db_generic_relationship_one extends db_generic_relationship {
+	public function resolve( db_generic_model $source ) {
+		return call_user_func([$this->target, 'find'], $source->{$this->foreign});
+	}
+}
+
+class db_generic_relationship_many extends db_generic_relationship {
+	public function resolve( db_generic_model $source ) {
+		$where = $this->getWhereOrder([$this->foreign => $source->id]);
+		return call_user_func([$this->target, 'all'], "$where$order");
+	}
+}
+
+class db_generic_relationship_count extends db_generic_relationship {
+	public function resolve( db_generic_model $source ) {
+		return call_user_func([$this->target, 'count'], [$this->foreign => $source->id]);
+	}
+}
+
+class db_generic_relationship_many_through extends db_generic_relationship {
+	protected $throughTable;
+	protected $foreignRight;
+
+	public function __construct( $target, $throughTable, $foreign, $foreignRight ) {
+		parent::__construct($target, $foreign);
+
+		$this->throughTable = $throughTable;
+		$this->foreignRight = $foreignRight;
+	}
+
+	public function resolve( db_generic_model $source ) {
+		$db = $source::$_db;
+		$rightIds = $db->select_fields_numeric($this->throughTable, $this->foreignRight, [$this->foreign => $source->id]);
+
+		$where = $this->getWhereOrder(['id' => $rightIds]);
+		return call_user_func([$this->target, 'all'], $where);
+	}
 }
 
 
