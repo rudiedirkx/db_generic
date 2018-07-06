@@ -1,4 +1,3 @@
-
 The most elegant, simple, beautiful DBAL ever.
 ====
 
@@ -10,13 +9,6 @@ Drivers / adapters / databases
 * MySQLi
 
 No SQLite 2 or procedural MySQL. What is it, 2003?
-
-
-Used in
-----
-
-* https://github.com/rudiedirkx/series
-* https://github.com/rudiedirkx/Blogs-feed
 
 
 Where to start
@@ -31,14 +23,6 @@ all in 1 clean array.
 Do it! You can create other drivers. Just extend `db_generic` and
 `db_generic_result`. You can call it `db_pgsql` =) NoSQL won't work, because
 there's no Query builder (and there won't be).
-
-
-To do
-----
-
-* Always UTF-8, everywhere, all the time.
-* Schema stuff for MySQL.
-* Maybe do a pgSQL driver?
 
 
 Show me examples!
@@ -105,3 +89,72 @@ And ofcourse there's updating and inserting etc.
 	$pk = $db->insert_id();
 
 
+Active Record Models
+----
+
+You can create models by extending `db_generic_model`:
+
+	class User extends db_generic_model {
+		static public $_table = 'users';
+	}
+
+And then make all procedures easier:
+
+	$user = User::find(12); // User|null
+
+	$user = User::first(['username' => 'sander']); // User|null
+	
+	$users = User::all(['country_id' => 12]); // User[]
+
+All objects are statically cached, so calling `find(X)` 6 times, takes it from the cache 5 times.
+
+Do active things to active objects:
+
+	$user->update(['disabled' => true]);
+
+	$user->delete();
+
+Or without the objects:
+
+	User::updateAll(['disabled' => true], ['username' => 'sander']);
+
+	User::deleteAll(['disabled' => true]);
+
+Add dynamic properties with `get_NAME()`.
+
+	class User extends db_generic_model {
+		function get_fullname() {
+			return "$this->firstname $this->lastname";
+		}
+	}
+
+	echo $user->fullname;
+
+Properties are cached in the object, so the getter is called only once.
+
+Add relationships with `relate_NAME()`:
+
+	class User extends db_generic_model {
+		function relate_country() {
+			return $this->relate_one(Country::class, 'country_id');
+		}
+
+		function relate_hobbies() {
+			return $this->relate_many(Hobby::class, 'user_id');
+		}
+
+		function relate_groups() {
+			return $this->relate_many_through(Group::class, 'users_groups', 'user_id', 'group_id');
+		}
+
+		function relate_num_groups() {
+			return $this->relate_count(UserGroup::class, 'user_id');
+		}
+	}
+
+	echo $user->country->name;
+	print_r($user->hobbies);
+	print_r($user->groups);
+	echo $user->num_groups;
+
+All primary keys must be `id`. Foreign keys can be anything.
