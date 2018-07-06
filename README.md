@@ -136,19 +136,23 @@ Add relationships with `relate_NAME()`:
 
 	class User extends db_generic_model {
 		function relate_country() {
-			return $this->relate_one(Country::class, 'country_id');
+			return $this->to_one(Country::class, 'country_id');
 		}
 
 		function relate_hobbies() {
-			return $this->relate_many(Hobby::class, 'user_id');
+			return $this->to_many(Hobby::class, 'user_id');
 		}
 
 		function relate_groups() {
-			return $this->relate_many_through(Group::class, 'users_groups', 'user_id', 'group_id');
+			return $this->to_many_through(Group::class, 'users_groups', 'user_id', 'group_id');
 		}
 
 		function relate_num_groups() {
-			return $this->relate_count(UserGroup::class, 'user_id');
+			return $this->to_count(UserGroup::class, 'user_id');
+		}
+
+		function relate_group_ids() {
+			return $this->to_many_scalar('group_id', 'users_groups', 'user_id');
 		}
 	}
 
@@ -156,5 +160,6 @@ Add relationships with `relate_NAME()`:
 	print_r($user->hobbies);
 	print_r($user->groups);
 	echo $user->num_groups;
+	print_r($user->group_ids);
 
 All primary keys must be `id`. Foreign keys can be anything.

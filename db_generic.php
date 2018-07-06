@@ -1201,20 +1201,24 @@ abstract class db_generic_model extends db_generic_record {
 	}
 
 
-	public function relate_one( $target, $foreign ) {
-		return new db_generic_relationship_one($target, $foreign);
+	public function to_one( $targetClass, $foreignColumn ) {
+		return new db_generic_relationship_one($targetClass, $foreignColumn);
 	}
 
-	public function relate_many( $target, $foreign ) {
-		return new db_generic_relationship_many($target, $foreign);
+	public function to_many( $targetClass, $foreignColumn ) {
+		return new db_generic_relationship_many($targetClass, $foreignColumn);
 	}
 
-	public function relate_count( $target, $foreign ) {
-		return new db_generic_relationship_count($target, $foreign);
+	public function to_count( $targetClass, $foreignColumn ) {
+		return new db_generic_relationship_count($targetClass, $foreignColumn);
 	}
 
-	public function relate_many_through( $target, $throughTable, $foreign, $foreignRight ) {
-		return new db_generic_relationship_many_through($target, $throughTable, $foreign, $foreignRight);
+	public function to_many_through( $targetClass, $throughTable, $foreignColumn, $foreignColumnRight ) {
+		return new db_generic_relationship_many_through($targetClass, $throughTable, $foreignColumn, $foreignColumnRight);
+	}
+
+	public function to_many_scalar( $targetColumn, $throughTable, $foreignColumn ) {
+		return new db_generic_relationship_many_scalar($targetColumn, $throughTable, $foreignColumn);
 	}
 
 	public function &__get( $name ) {
@@ -1294,6 +1298,21 @@ class db_generic_relationship_many_through extends db_generic_relationship {
 
 		$where = $this->getWhereOrder(['id' => $rightIds]);
 		return call_user_func([$this->target, 'all'], $where);
+	}
+}
+
+class db_generic_relationship_many_scalar extends db_generic_relationship {
+	protected $throughTable;
+
+	public function __construct( $targetColumn, $throughTable, $foreignColumn ) {
+		parent::__construct($targetColumn, $foreignColumn);
+
+		$this->throughTable = $throughTable;
+	}
+
+	public function resolve( db_generic_model $source ) {
+		$db = $source::$_db;
+		return $db->select_fields_numeric($this->throughTable, $this->target, [$this->foreign => $source->id]);
 	}
 }
 
