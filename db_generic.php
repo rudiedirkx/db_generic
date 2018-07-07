@@ -1080,7 +1080,7 @@ abstract class db_generic_model extends db_generic_record {
 
 	static function _modelToCache( $object ) {
 		if ( self::$_cache !== false ) {
-			if ( $object instanceof self && property_exists($object, 'id') ) {
+			if ( $object instanceof self ) {
 				self::$_cache[get_class($object)][$object->id] = $object;
 			}
 		}

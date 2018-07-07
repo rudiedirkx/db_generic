@@ -1,6 +1,6 @@
 <?php
 
-require 'inc.connect.php';
+require __DIR__ . '/inc.bootstrap.php';
 
 // create table `stuffs`
 $definition = array(

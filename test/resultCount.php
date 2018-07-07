@@ -1,6 +1,6 @@
 <?php
 
-require 'inc.connect.php';
+require __DIR__ . '/inc.bootstrap.php';
 
 $stuffs = $db->select('stuffs', '(1 OR stuff = ?) ORDER BY id LIMIT 30', array('A'));
 print_r($stuffs);

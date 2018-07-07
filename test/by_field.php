@@ -1,6 +1,6 @@
 <?php
 
-require 'inc.connect.php';
+require __DIR__ . '/inc.bootstrap.php';
 
 var_dump($db->count_rows('SELECT * FROM stuffs WHERE stuff <> ? GROUP BY stuff', array('Q')));
 
