@@ -678,12 +678,11 @@ abstract class db_generic {
 	public function buildSelectQuery($query) {
 		$sql = array();
 
-		$pre = "\n\t";
 		$post = "\n";
 
 		// SELECT
 		if ( empty($query['fields']) ) {
-			$sql[] = 'SELECT' . $pre . '*' . $post;
+			$sql[] = 'SELECT *' . $post;
 		}
 		else {
 			$fields = array();
@@ -704,7 +703,7 @@ abstract class db_generic {
 				}
 			}
 
-			$sql[] = 'SELECT' . $pre . implode(', ', $fields) . $post;
+			$sql[] = 'SELECT ' . implode(', ', $fields) . $post;
 		}
 
 		// FROM
@@ -714,7 +713,7 @@ abstract class db_generic {
 			$alias = ' ' . $table[1];
 			$table = $table[0];
 		}
-		$sql[] = 'FROM' . $pre . $this->escapeAndQuoteTable($table) . $alias . $post;
+		$sql[] = 'FROM ' . $this->escapeAndQuoteTable($table) . $alias . $post;
 
 		// X JOIN
 		foreach ( array('join', 'left join', 'inner join', 'right join') AS $joinType ) {
@@ -735,10 +734,12 @@ abstract class db_generic {
 
 					$on = '';
 					if ( $conditions ) {
-						$on = $post . 'ON' . $pre . implode(' AND ', $conditions);
+						$on = ' ON ' . implode(' AND ', array_map(function($condition) {
+							return is_array($condition) ? $this->replaceholders(...$condition) : $condition;
+						}, $conditions));
 					}
 
-					$sql[] = strtoupper($joinType) . $pre . $this->escapeAndQuoteTable($table) . $tableAlias . $on . $post;
+					$sql[] = strtoupper($joinType) . ' ' . $this->escapeAndQuoteTable($table) . $tableAlias . $on . $post;
 				}
 			}
 		}
@@ -769,7 +770,7 @@ abstract class db_generic {
 				$conditions[] = $tableAlias . $field . ' ' . strtoupper($operator) . ' ' . $this->escapeAndQuote($value);
 			}
 
-			$sql[] = 'WHERE' . $pre . implode(' AND ', $conditions) . $post;
+			$sql[] = 'WHERE ' . implode(' AND ', $conditions) . $post;
 		}
 
 		// GROUP BY
@@ -797,7 +798,7 @@ abstract class db_generic {
 				$order[] = $tableAlias . $this->escapeAndQuoteColumn($field) . ' ' . $direction;
 			}
 
-			$sql[] = 'ORDER BY' . $pre . implode(', ', $order) . $post;
+			$sql[] = 'ORDER BY ' . implode(', ', $order) . $post;
 		}
 
 		// LIMIT
