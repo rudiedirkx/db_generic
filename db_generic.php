@@ -182,11 +182,11 @@ abstract class db_generic {
 			}
 		}
 		// Bool -> first
-		else if ( is_bool($options) ) {
+		elseif ( is_bool($options) ) {
 			$first = $options;
 		}
 		// String -> Class
-		else if ( is_string($options) ) {
+		elseif ( is_string($options) ) {
 			$class = $options;
 		}
 
@@ -749,25 +749,26 @@ abstract class db_generic {
 			$conditions = array();
 
 			foreach ( $query['conditions'] AS $i => $condition ) {
-				$escapeAndQuoteColumn = true;
-
-				if ( is_string($i) ) {
-					$condition = array($i, $condition, '=');
-					$escapeAndQuoteColumn = false;
+				if ( is_int($i) && is_array($condition) ) {
+					// ['id <> ?', [0]],
+					// ['type not in (?)', [[1, 2, 3]]],
+					$conditions[] = '(' . $this->replaceholders(...$condition) . ')';
 				}
-
-				$condition[] = null;
-				list($field, $value, $operator) = $condition;
-				$operator || $operator = '=';
-
-				$tableAlias = '';
-				if ( is_array($field) ) {
-					$tableAlias = $field[0] . '.';
-					$field = $field[1];
+				else {
+					// 'enabled' => 1,
+					// 'type' => 1,
+					$field = $this->escapeAndQuoteColumn($i);
+					if ( is_array($condition) ) {
+						$operator = 'IN';
+						$values = array_map(array($this, 'escapeAndQuoteValue'), $value);
+						$value = implode(', ', $values);
+					}
+					else {
+						$operator = '=';
+						$value = $this->escapeAndQuoteValue($condition);
+					}
+					$conditions[] = "($field $operator $value)";
 				}
-
-				$escapeAndQuoteColumn && $field = $this->escapeAndQuoteColumn($field);
-				$conditions[] = $tableAlias . $field . ' ' . strtoupper($operator) . ' ' . $this->escapeAndQuote($value);
 			}
 
 			$sql[] = 'WHERE ' . implode(' AND ', $conditions) . $post;
@@ -1552,7 +1553,7 @@ class db_generic_collection implements ArrayAccess, IteratorAggregate, Countable
 		if ( null === $offset ) {
 			$this->items[] = $value;
 		}
-		else if ( is_int($offset) ) {
+		elseif ( is_int($offset) ) {
 			$this->items[$offset] = $value;
 		}
 		else {
