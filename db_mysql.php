@@ -254,6 +254,55 @@ class db_mysql extends db_generic {
 		return $column;
 	}
 
+	public function indexes( $tableName ) {
+		$cache = &$this->metaCache[__FUNCTION__];
+
+		if ( !isset($cache[$tableName]) ) {
+			$table = $this->escapeAndQuoteTable($tableName);
+			$cache[$tableName] = $this->fetch_by_field("show index from $table", 'Key_name')->all();
+		}
+
+		return $cache[$tableName];
+	}
+
+	public function index( $tableName, $indexName, $indexDefinition = null, $returnSQL = false ) {
+		// existing index
+		$indexes = $this->indexes($tableName);
+		$index = @$indexes[$indexName];
+
+		// create index
+		if ( $indexDefinition ) {
+			// column exists -> fail
+			if ( $index && !$returnSQL ) {
+				return null;
+			}
+
+			// format
+			if ( !isset($indexDefinition['columns']) ) {
+				$indexDefinition = array('columns' => $indexDefinition);
+			}
+
+			// unique
+			$unique = !empty($indexDefinition['unique']);
+			$unique = $unique ? 'UNIQUE' : '';
+
+			// subject columns
+			$columns = array_map(array($this, 'escapeAndQuoteTable'), $indexDefinition['columns']);
+			$columns = implode(', ', $columns);
+
+			// full SQL
+			$sql = 'CREATE '.$unique.' INDEX "'.$indexName.'" ON "'.$tableName.'" ('.$columns.')';
+
+			if ( $returnSQL ) {
+				return $sql;
+			}
+
+			return $this->execute($sql);
+		}
+
+		return $index;
+	}
+
 }
 
 
