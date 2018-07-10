@@ -675,142 +675,196 @@ abstract class db_generic {
 		return false;
 	}
 
-	public function buildSelectQuery($query) {
-		$sql = array();
-
-		$post = "\n";
-
-		// SELECT
-		if ( empty($query['fields']) ) {
-			$sql[] = 'SELECT *' . $post;
-		}
-		else {
-			$fields = array();
-
-			foreach ( $query['fields'] AS $i => $field ) {
-				// With table alias
-				if ( is_string($i) ) {
-					$tableAlias = $i . '.';
-
-					foreach ( (array)$field AS $f ) {
-						'*' == $f || $f = $this->escapeAndQuoteColumn($f);
-						$fields[] = $tableAlias . $f;
-					}
-				}
-				// No table alias / expression
-				else {
-					$fields[] = $field;
-				}
-			}
-
-			$sql[] = 'SELECT ' . implode(', ', $fields) . $post;
-		}
-
-		// FROM
-		$table = $query['table'];
-		$alias = '';
-		if ( is_array($table) ) {
-			$alias = ' ' . $table[1];
-			$table = $table[0];
-		}
-		$sql[] = 'FROM ' . $this->escapeAndQuoteTable($table) . $alias . $post;
-
-		// X JOIN
-		foreach ( array('join', 'left join', 'inner join', 'right join') AS $joinType ) {
-			if ( isset($query[$joinType]) ) {
-				$joinSource = $query[$joinType];
-
-				'join' == $joinType && $joinType = 'inner join';
-
-				foreach ( $joinSource AS $joinDetails ) {
-					$joinDetails[] = null;
-					list($table, $conditions) = $joinDetails;
-
-					$tableAlias = '';
-					if ( is_array($table) ) {
-						$tableAlias = ' ' . $table[1];
-						$table = $table[0];
-					}
-
-					$on = '';
-					if ( $conditions ) {
-						$on = ' ON ' . implode(' AND ', array_map(function($condition) {
-							return is_array($condition) ? $this->replaceholders(...$condition) : $condition;
-						}, $conditions));
-					}
-
-					$sql[] = strtoupper($joinType) . ' ' . $this->escapeAndQuoteTable($table) . $tableAlias . $on . $post;
-				}
-			}
-		}
-
-		// WHERE
-		if ( !empty($query['conditions']) ) {
-			$conditions = array();
-
-			foreach ( $query['conditions'] AS $i => $condition ) {
-				if ( is_int($i) && is_array($condition) ) {
-					// ['id <> ?', [0]],
-					// ['type not in (?)', [[1, 2, 3]]],
-					$conditions[] = '(' . $this->replaceholders(...$condition) . ')';
-				}
-				else {
-					// 'enabled' => 1,
-					// 'type' => 1,
-					$field = $this->escapeAndQuoteColumn($i);
-					if ( is_array($condition) ) {
-						$operator = 'IN';
-						$values = array_map(array($this, 'escapeAndQuoteValue'), $value);
-						$value = implode(', ', $values);
-					}
-					else {
-						$operator = '=';
-						$value = $this->escapeAndQuoteValue($condition);
-					}
-					$conditions[] = "($field $operator $value)";
-				}
-			}
-
-			$sql[] = 'WHERE ' . implode(' AND ', $conditions) . $post;
-		}
-
-		// GROUP BY
-
-
-		// HAVING
-
-
-		// ORDER BY
-		if ( !empty($query['order']) ) {
-			$order = array();
-
-			foreach ( (array)$query['order'] AS $field ) {
-				$direction = 'ASC';
-				$tableAlias = '';
-				if ( is_array($field) ) {
-					if ( isset($field[2]) ) {
-						$direction = strtoupper($field[2]);
-					}
-
-					$tableAlias = $field[0] . '.';
-					$field = $field[1];
-				}
-
-				$order[] = $tableAlias . $this->escapeAndQuoteColumn($field) . ' ' . $direction;
-			}
-
-			$sql[] = 'ORDER BY ' . implode(', ', $order) . $post;
-		}
-
-		// LIMIT
-
-
-		// OFFSET
-
-
-		return implode($sql);
+	public function newQuery( array $query = [] ) {
+		return new db_generic_query($this, $query);
 	}
 
+}
+
+class db_generic_query_conditions implements Countable {
+	public $delim;
+	public $conditions = [];
+
+	public function __construct( $delim ) {
+		$this->delim = $delim;
+	}
+
+	public function where( $sql, array $params = [] ) {
+		$this->conditions[] = $sql instanceof self ? $sql : [$sql, $params];
+		return $this;
+	}
+
+	public function count() {
+		return count($this->conditions);
+	}
+}
+
+class db_generic_query {
+	protected $db;
+
+	protected $fields = [];
+	protected $tables = [];
+	protected $join = [];
+	protected $conditions;
+	protected $order = [];
+
+	public function __construct( db_generic $db, array $query = [] ) {
+		$this->db = $db;
+
+		$this->conditions = $this->and();
+	}
+
+	public function and() {
+		return new db_generic_query_conditions('AND');
+	}
+
+	public function or() {
+		return new db_generic_query_conditions('OR');
+	}
+
+	public function field( $field, $alias = null ) {
+		$this->fields[] = [$field, $alias];
+		return $this;
+	}
+
+	public function table( $table, $alias = null ) {
+		$this->tables[] = [$table, $alias];
+		return $this;
+	}
+
+	public function condition( $condition, array $params = [] ) {
+		$this->conditions->where($condition, $params);
+
+		return $this;
+	}
+
+	public function buildSelect() {
+		return implode("\n", array_filter([
+			$this->buildFields(),
+			$this->buildFrom(),
+			$this->buildJoin(),
+			$this->buildWhere(),
+			$this->buildOrder(),
+		]));
+	}
+
+	public function buildConditions( db_generic_query_conditions $conditions ) {
+		$sqls = [];
+
+		foreach ( $conditions->conditions as $condition ) {
+			if ( $condition instanceof db_generic_query_conditions ) {
+				$sqls[] = '(' . $this->buildConditions($condition) . ')';
+			}
+			else {
+				list($sql, $params) = $condition;
+				$sqls[] = '(' . $this->db->replaceholders($sql, $params) . ')';
+			}
+		}
+
+		return implode(" $conditions->delim ", $sqls);
+	}
+
+	public function buildFields() {
+		if ( !$this->fields ) {
+			return 'SELECT *';
+		}
+
+		$fields = [];
+
+		foreach ( $this->fields AS list($field, $alias) ) {
+			$alias = $alias ? " AS $alias" : '';
+			$fields[] = $this->buildField($field) . $alias;
+		}
+
+		return 'SELECT ' . implode(', ', $fields);
+	}
+
+	public function buildField( $field ) {
+		if ( is_string($field) ) {
+			return $field;
+		}
+
+		if ( $field instanceof db_generic_query_conditions ) {
+			return $this->buildConditions($field);
+		}
+	}
+
+	public function buildFrom() {
+		$tables = [];
+
+		foreach ( $this->tables as $table ) {
+			$alias = '';
+			if ( is_array($table) ) {
+				$alias = ' AS ' . $table[1];
+				$table = $table[0];
+			}
+			$tables[] = 'FROM ' . $this->db->escapeAndQuoteTable($table) . $alias;
+		}
+
+		return implode(', ', $tables);
+	}
+
+	public function buildJoin() {
+		$joins = [];
+
+		foreach ( $this->join as $info ) {
+			list($type, $table, $conditions) = $info;
+
+			$tableAlias = '';
+			if ( is_array($table) ) {
+				$tableAlias = ' ' . $table[1];
+				$table = $table[0];
+			}
+
+			$on = '';
+			if ( $conditions ) {
+				$on = ' ON ' . implode(' AND ', array_map(function($condition) {
+					return is_array($condition) ? $this->db->replaceholders(...$condition) : $condition;
+				}, $conditions));
+			}
+
+			$joins[] = trim(strtoupper("$type join")) . ' ' . $this->db->escapeAndQuoteTable($table) . $tableAlias . $on;
+		}
+
+		return implode("\n", $joins);
+	}
+
+	public function buildWhere() {
+		if ( count($this->conditions) == 0 ) {
+			return null;
+		}
+
+		return 'WHERE ' . $this->buildConditions($this->conditions);
+	}
+
+	public function buildOrder() {
+		if ( !$this->order ) {
+			return null;
+		}
+
+		$order = [];
+
+		foreach ( $this->order AS $field ) {
+			$direction = 'ASC';
+			$tableAlias = '';
+			if ( is_array($field) ) {
+				if ( isset($field[2]) ) {
+					$direction = strtoupper($field[2]);
+				}
+
+				$tableAlias = $field[0] . '.';
+				$field = $field[1];
+			}
+
+			$order[] = $tableAlias . $this->db->escapeAndQuoteColumn($field) . ' ' . $direction;
+		}
+
+		return 'ORDER BY ' . implode(', ', $order);
+	}
+
+	public function __toString() {
+		return $this->buildSelect();
+	}
 }
 
 
