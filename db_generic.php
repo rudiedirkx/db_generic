@@ -1246,7 +1246,7 @@ abstract class db_generic_model extends db_generic_record {
 	/** @return void */
 	static function presave( &$data ) {
 		$data = array_map(function($datum) {
-			return is_null($datum) ? null : (is_scalar($datum) ? trim($datum) : array_filter($datum));
+			return is_null($datum) || is_bool($datum) ? $datum : (is_scalar($datum) ? trim($datum) : array_filter($datum));
 		}, $data);
 	}
 
