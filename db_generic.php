@@ -1244,7 +1244,11 @@ abstract class db_generic_model extends db_generic_record {
 	}
 
 	/** @return void */
-	static function presave( &$data ) {
+	static function presave( array &$data ) {
+	}
+
+	/** @return void */
+	static function presaveTrim( array &$data ) {
 		$data = array_map(function($datum) {
 			return is_null($datum) || is_bool($datum) ? $datum : (is_scalar($datum) ? trim($datum) : array_filter($datum));
 		}, $data);
@@ -1254,9 +1258,21 @@ abstract class db_generic_model extends db_generic_record {
 	function init() {
 	}
 
+	/** @return void */
+	function fill( array $props ) {
+		foreach ( $props as $name => $value ) {
+			$this->$name = $value;
+		}
+
+		$this->init();
+	}
+
 	/** @return bool */
 	function update( $data ) {
-		static::presave($data);
+		if ( is_array($data) ) {
+			static::presave($data);
+			$this->fill($data);
+		}
 		return static::$_db->update(static::$_table, $data, array('id' => $this->id));
 	}
 
@@ -1310,6 +1326,7 @@ abstract class db_generic_relationship {
 	protected $target;
 	protected $foreign;
 	protected $order;
+	protected $key;
 
 	public function __construct( db_generic_model $source = null, $targetClass, $foreignColumn ) {
 		$this->source = $source;
@@ -1348,6 +1365,11 @@ abstract class db_generic_relationship {
 
 	public function order( $order ) {
 		$this->order = $order;
+		return $this;
+	}
+
+	public function key( $key ) {
+		$this->key = $key;
 		return $this;
 	}
 
@@ -1397,7 +1419,8 @@ class db_generic_relationship_one extends db_generic_relationship {
 class db_generic_relationship_many extends db_generic_relationship {
 	protected function fetch() {
 		$where = $this->getWhereOrder([$this->foreign => $this->source->id]);
-		$targets = call_user_func([$this->target, 'all'], $where);
+		$options = $this->key ? ['id' => $this->key] : [];
+		$targets = call_user_func([$this->target, 'all'], $where, [], $options);
 		count($targets) and $this->loadEagers($targets);
 		return $targets;
 	}
@@ -1416,7 +1439,8 @@ class db_generic_relationship_many extends db_generic_relationship {
 
 		foreach ( $targets as $target ) {
 			$object = $objects[ $ids[ $target->$foreignColumn ] ];
-			$object->$name[] = $target;
+			$key = $this->key ?: 'id';
+			$object->$name[ $target->$key ] = $target;
 		}
 
 		$this->loadEagers($targets);
