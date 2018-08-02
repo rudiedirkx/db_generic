@@ -1135,7 +1135,7 @@ abstract class db_generic_model extends db_generic_record {
 	static public $_cache = [];
 
 	static function _modelToFromCache( $object ) {
-		if ( self::$_cache !== false ) {
+		if ( self::$_cache !== false && property_exists($object, 'id') ) {
 			if ( $fromCache = self::_modelFromCache(get_class($object), $object->id) ) {
 // echo "discard " . get_class($object) . " $object->id\n";
 				$object = $fromCache;
