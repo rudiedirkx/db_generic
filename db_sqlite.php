@@ -19,6 +19,7 @@ class db_sqlite extends db_generic {
 			$this->db->sqliteCreateFunction('IF', array(__CLASS__, 'fn_if'));
 			$this->db->sqliteCreateFunction('RAND', array(__CLASS__, 'fn_rand'));
 			$this->db->sqliteCreateFunction('CONCAT', array(__CLASS__, 'fn_concat'));
+			$this->db->sqliteCreateFunction('FROM_UNIXTIME', array(__CLASS__, 'fn_from_unixtime'));
 
 			// Add simple functions
 			$this->db->sqliteCreateFunction('CEIL', 'ceil');

@@ -37,6 +37,10 @@ abstract class db_generic {
 		return implode(func_get_args());
 	}
 
+	static function fn_from_unixtime( $utc ) {
+		return date('Y-m-d H:i:s', $utc);
+	}
+
 	protected $params = array();
 	protected $db;
 
