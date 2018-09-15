@@ -1114,6 +1114,14 @@ class db_generic_record implements ArrayAccess {
 	}
 
 
+	public function _gettable( $name ) {
+		return is_callable(array($this, 'get_' . $name));
+	}
+
+	public function __isset( $name ) {
+		return $this->_gettable($name);
+	}
+
 	public function &__get( $name ) {
 		$this->$name = NULL;
 
@@ -1294,8 +1302,8 @@ abstract class db_generic_model extends db_generic_record {
 		return new db_generic_relationship_many($this, $targetClass, $foreignColumn);
 	}
 
-	public function to_count( $targetClass, $foreignColumn ) {
-		return new db_generic_relationship_count($this, $targetClass, $foreignColumn);
+	public function to_count( $targetTable, $foreignColumn ) {
+		return new db_generic_relationship_count($this, $targetTable, $foreignColumn);
 	}
 
 	public function to_many_through( $targetClass, $throughTable, $foreignColumn, $foreignColumnRight ) {
@@ -1304,6 +1312,10 @@ abstract class db_generic_model extends db_generic_record {
 
 	public function to_many_scalar( $targetColumn, $throughTable, $foreignColumn ) {
 		return new db_generic_relationship_many_scalar($this, $targetColumn, $throughTable, $foreignColumn);
+	}
+
+	public function _gettable( $name ) {
+		return parent::_gettable($name) || is_callable(array($this, 'relate_' . $name));
 	}
 
 	public function &__get( $name ) {
@@ -1390,9 +1402,9 @@ abstract class db_generic_relationship {
 	}
 
 	protected function getForeignIds( array $objects, $column ) {
-		return array_map(function($object) use ($column) {
+		return array_filter(array_map(function($object) use ($column) {
 			return $object->$column;
-		}, $objects);
+		}, $objects));
 	}
 }
 
