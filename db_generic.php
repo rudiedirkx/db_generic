@@ -1355,7 +1355,7 @@ abstract class db_generic_relationship {
 	}
 
 	public function loadAll( array $objects ) {
-		return $this->fetchAll($objects);
+		return count($objects) ? $this->fetchAll($objects) : [];
 	}
 
 	protected function loadEagers( array $targets ) {
@@ -1426,7 +1426,7 @@ class db_generic_relationship_one extends db_generic_relationship {
 			$object->$name = @$targets[$object->$foreignColumn];
 		}
 
-		$this->loadEagers($targets);
+		count($targets) and $this->loadEagers($targets);
 
 		return $targets;
 	}
@@ -1459,7 +1459,7 @@ class db_generic_relationship_many extends db_generic_relationship {
 			$object->$name[ $target->$key ] = $target;
 		}
 
-		$this->loadEagers($targets);
+		count($targets) and $this->loadEagers($targets);
 
 		return $targets;
 	}
