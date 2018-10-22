@@ -1345,6 +1345,7 @@ abstract class db_generic_relationship {
 	protected $source;
 	protected $target;
 	protected $foreign;
+	protected $where;
 	protected $order;
 	protected $key;
 
@@ -1383,6 +1384,11 @@ abstract class db_generic_relationship {
 		return $this;
 	}
 
+	public function where( $where ) {
+		$this->where = $where;
+		return $this;
+	}
+
 	public function order( $order ) {
 		$this->order = $order;
 		return $this;
@@ -1401,6 +1407,7 @@ abstract class db_generic_relationship {
 	protected function getWhereOrder( array $conditions ) {
 		$db = $this->db();
 		$conditions = $db->stringifyConditions($conditions);
+		$this->where and $conditions .= ' AND ' . $this->where;
 		$order = $this->order ? " ORDER BY {$this->order}" : '';
 		return $conditions . $order;
 	}
@@ -1472,7 +1479,8 @@ class db_generic_relationship_many extends db_generic_relationship {
 class db_generic_relationship_count extends db_generic_relationship {
 	protected function fetch() {
 		$db = $this->db();
-		return $db->count($this->target, [$this->foreign => $this->source->id]);
+		$where = $this->getWhereOrder([$this->foreign => $this->source->id]);
+		return $db->count($this->target, $where);
 	}
 
 	protected function fetchAll( array $objects ) {
@@ -1488,10 +1496,10 @@ class db_generic_relationship_count extends db_generic_relationship {
 		$targets = $db->select_fields($this->target, $qForeignColumn . ', COUNT(1)', $where);
 
 		foreach ( $ids as $id => $index ) {
-			$objects[$index]->$name = @$targets[$id] ?: 0;
+			$objects[$index]->$name = (int) ($targets[$id] ?? 0);
 		}
 
-		return [];
+		return $targets;
 	}
 }
 

@@ -46,6 +46,15 @@ class User extends db_generic_model {
 		return $this->to_many(Membership::class, 'user_id')/*->eager(['group'])*/;
 	}
 
+	function relate_num_memberships() {
+		return $this->to_count(Membership::$_table, 'user_id');
+	}
+
+	function relate_num_odd_memberships() {
+		return $this->to_count(Membership::$_table, 'user_id')
+			->where('(id % 2) = 1');
+	}
+
 	function relate_group_ids() {
 		return $this->to_many_scalar('group_id', Membership::$_table, 'user_id');
 	}
@@ -88,6 +97,16 @@ $_queryStart = count($db->queries);
 
 
 $users = User::all('1');
+
+User::eager('num_odd_memberships', $users);
+foreach ($users as $user) {
+	var_dump($user->num_odd_memberships);
+}
+
+echo "\n\n";
+
+
+
 print_r(User::eager('groups', $users));
 print_r($users);
 
