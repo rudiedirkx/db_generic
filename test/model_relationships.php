@@ -46,8 +46,12 @@ class User extends db_generic_model {
 		return $this->to_many(Membership::class, 'user_id')/*->eager(['group'])*/;
 	}
 
+	function relate_group_ids() {
+		return $this->to_many_scalar('group_id', Membership::$_table, 'user_id');
+	}
+
 	function relate_groups() {
-		return $this->to_many_through(Group::class, Membership::$_table, 'user_id', 'group_id');
+		return $this->to_many_through(Group::class, 'group_ids');
 	}
 }
 
@@ -70,12 +74,37 @@ class Group extends db_generic_model {
 		return $this->to_many(Membership::class, 'group_id')->eager(['user']);
 	}
 
+	function relate_user_ids() {
+		return $this->to_many_scalar('user_id', Membership::$_table, 'group_id');
+	}
+
 	function relate_users() {
-		return $this->to_many_through(User::class, Membership::$_table, 'group_id', 'user_id');
+		return $this->to_many_through(User::class, 'user_ids');
 	}
 }
 
 $_queryStart = count($db->queries);
+
+
+
+$users = User::all('1');
+print_r(User::eager('groups', $users));
+print_r($users);
+
+
+
+// $groups = Group::all('1');
+// print_r(Group::eager('users', $groups));
+// print_r($groups);
+
+
+
+print_r(array_slice($db->queries, $_queryStart));
+$_queryStart = count($db->queries);
+
+
+
+exit;
 
 $user = User::find(1);
 print_r($user);

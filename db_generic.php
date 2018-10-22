@@ -1306,8 +1306,8 @@ abstract class db_generic_model extends db_generic_record {
 		return new db_generic_relationship_count($this, $targetTable, $foreignColumn);
 	}
 
-	public function to_many_through( $targetClass, $throughTable, $foreignColumn, $foreignColumnRight ) {
-		return new db_generic_relationship_many_through($this, $targetClass, $throughTable, $foreignColumn, $foreignColumnRight);
+	public function to_many_through( $targetClass, $throughRelationship ) {
+		return new db_generic_relationship_many_through($this, $targetClass, $throughRelationship);
 	}
 
 	public function to_many_scalar( $targetColumn, $throughTable, $foreignColumn ) {
@@ -1328,6 +1328,10 @@ abstract class db_generic_model extends db_generic_record {
 	}
 
 	static public function eager( $name, array $objects ) {
+		if ( count($objects) == 0 ) {
+			return [];
+		}
+
 		$relationship = call_user_func([new static(), "relate_$name"]);
 		return $relationship->name($name)->loadAll($objects);
 	}
@@ -1492,22 +1496,25 @@ class db_generic_relationship_count extends db_generic_relationship {
 }
 
 class db_generic_relationship_many_through extends db_generic_relationship {
-	protected $throughTable;
-	protected $foreignRight;
+	protected $throughRelationship;
 
-	public function __construct( db_generic_model $source = null, $target, $throughTable, $foreign, $foreignRight ) {
-		parent::__construct($source, $target, $foreign);
+	public function __construct( db_generic_model $source = null, $targetClass, $throughRelationship ) {
+		parent::__construct($source, $targetClass, null);
 
-		$this->throughTable = $throughTable;
-		$this->foreignRight = $foreignRight;
+		$this->throughRelationship = $throughRelationship;
 	}
 
 	protected function fetch() {
 		$db = $this->db();
-		$rightIds = $db->select_fields_numeric($this->throughTable, $this->foreignRight, [$this->foreign => $this->source->id]);
+		$targetIds = $this->source->{$this->throughRelationship};
 
-		$where = $this->getWhereOrder(['id' => $rightIds]);
+		if ( count($targetIds) == 0 ) {
+			return [];
+		}
+
+		$where = $this->getWhereOrder(['id' => $targetIds]);
 		$targets = call_user_func([$this->target, 'all'], $where);
+
 		count($targets) and $this->loadEagers($targets);
 		return $targets;
 	}
@@ -1516,23 +1523,26 @@ class db_generic_relationship_many_through extends db_generic_relationship {
 		$name = $this->name;
 		$db = $this->db();
 
-		$ids = array_flip($this->getForeignIds($objects, 'id'));
-
-		$links = $db->select($this->throughTable, [$this->foreign => array_keys($ids)])->all();
-
-		$targetIds = $this->getForeignIds($links, $this->foreignRight);
+		$class = get_class(reset($objects));
+		$targetIds = call_user_func([$class, 'eager'], $this->throughRelationship, $objects);
 
 		$where = $this->getWhereOrder(['id' => array_unique($targetIds)]);
 		$targets = call_user_func([$this->target, 'all'], $where);
 
+		$grouped = [];
 		foreach ( $objects as $object ) {
-			$object->$name = [];
+			foreach ( $object->{$this->throughRelationship} as $id ) {
+				if ( $target = $targets[$id] ?? null ) {
+					$grouped[$object->id][$target->id] = $target;
+				}
+			}
 		}
 
-		foreach ( $links as $link ) {
-			$target = $targets[$link->{$this->foreignRight}];
-			$objects[ $ids[$link->{$this->foreign}] ]->$name[$target->id] = $target;
+		foreach ( $objects as $object ) {
+			$object->$name = $grouped[$object->id] ?? [];
 		}
+
+		count($targets) and $this->loadEagers($targets);
 
 		return $targets;
 	}
@@ -1568,7 +1578,7 @@ class db_generic_relationship_many_scalar extends db_generic_relationship {
 			$objects[ $ids[$link->{$this->foreign}] ]->$name[] = $link->{$this->target};
 		}
 
-		return [];
+		return array_column($links, $this->target);
 	}
 }
 
