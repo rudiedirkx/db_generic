@@ -89,17 +89,20 @@ class db_mysql extends db_generic {
 		$this->connect();
 
 		$query = $this->replaceholders($query, $params);
-
-		if ( is_array($this->queries) ) {
-			$this->queries[] = $query;
-		}
+		$_time = microtime(1);
 
 		try {
 			$q = @$this->db->query($query);
 			if ( !$q ) {
+				$this->logQuery($query, $_time, $this->error());
 				return $this->except($query, $this->error());
 			}
-		} catch ( Exception $ex ) {
+			else {
+				$this->logQuery($query, $_time);
+			}
+		}
+		catch ( Exception $ex ) {
+			$this->logQuery($query, $_time, $ex->getMessage());
 			return $this->except($query, $ex->getMessage());
 		}
 

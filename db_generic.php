@@ -45,6 +45,7 @@ abstract class db_generic {
 	protected $db;
 
 	public $returnAffectedRows = false;
+	public $queryLogger;
 	public $queries = array();
 	public $metaCache = array();
 
@@ -107,6 +108,18 @@ abstract class db_generic {
 
 	public function escapeAndQuoteColumn( $column ) {
 		return $this->quoteColumn($this->escapeColumn($column));
+	}
+
+	protected function logQuery( $query, $startTime, $error = null ) {
+		$query = trim(preg_replace('#\s+#', ' ', $query));
+		$ms = (microtime(1) - $startTime) * 1000;
+
+		if ( $this->queryLogger ) {
+			call_user_func($this->queryLogger, $query, $ms, $error);
+		}
+		elseif ( is_array($this->queries) ) {
+			$this->queries[] = '[' . number_format($ms, 1) . 'ms] ' . $query;
+		}
 	}
 
 	public function except( $query, $error, $errno = -1 ) {
