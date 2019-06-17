@@ -645,21 +645,28 @@ abstract class db_generic {
 
 	abstract public function index( $tableName, $indexName, $indexDefinition = null, $returnSQL = false );
 
-	protected function needsSchemaUpdate($schema) {
+	protected function needsSchemaUpdate(array $schema) {
 		if ( !isset($schema['version']) ) {
 			return false;
 		}
 
-		return !$this->hasSchemaVersion($schema['version']);
+		return !$this->hasSchemaVersion($schema['version']) || count($this->getNewUpdates($schema));
 	}
 
-	public function ensureSchema($schema, callable $callback = null) {
+	public function ensureSchema(array $schema, callable $callback = null) {
 		$this->enableForeignKeys();
 
+		$changes = [];
 		if ( $this->needsSchemaUpdate($schema) ) {
 			try {
 				$changes = $this->schema($schema);
 				$this->setSchemaVersion($schema['version']);
+
+				foreach ($this->getNewUpdates($schema) as $index => $callback) {
+					$changes['updates'][$index] = $callback($this);
+					$this->setSchemaVersion($index);
+				}
+
 				$callback and $callback($changes);
 			}
 			catch (db_exception $ex) {
@@ -669,6 +676,8 @@ abstract class db_generic {
 				exit((string) $ex);
 			}
 		}
+
+		return $changes;
 	}
 
 	protected function setSchemaVersion($version) {
@@ -690,6 +699,24 @@ abstract class db_generic {
 		}
 
 		return false;
+	}
+
+	protected function getNewUpdates(array $schema) {
+		if (!isset($schema['updates'])) {
+			return [];
+		}
+
+		$ran = $this->select_fields('_version', '_version', '1');
+
+		$new = [];
+		foreach ($schema['updates'] as $index => $callback) {
+			$index = "update--$index";
+			if (!in_array($index, $ran)) {
+				$new[$index] = $callback;
+			}
+		}
+
+		return $new;
 	}
 
 	public function newQuery( array $query = [] ) {
