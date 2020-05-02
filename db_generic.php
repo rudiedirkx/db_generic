@@ -1319,6 +1319,13 @@ abstract class db_generic_model extends db_generic_record {
 		$this->init();
 	}
 
+	/** @return static */
+	function refresh() {
+		$data = static::$_db->select(static::$_table, ['id' => $this->id]);
+		$this->fill($data->nextAssocArray());
+		return $this;
+	}
+
 	/** @return bool */
 	function update( $data ) {
 		if ( is_array($data) ) {
