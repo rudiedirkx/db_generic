@@ -4,6 +4,9 @@ class db_mysql extends db_generic {
 
 	protected $database = '';
 
+	public $quoteColumn = '';
+	public $quoteTable = '';
+
 	protected function __construct( $params ) {
 		$this->params = $params;
 	}
@@ -65,6 +68,15 @@ class db_mysql extends db_generic {
 		catch ( Exception $ex ) {}
 
 		return false;
+	}
+
+
+	public function quoteColumn( $column ) {
+		return "$this->quoteColumn$column$this->quoteColumn";
+	}
+
+	public function quoteTable( $table ) {
+		return "$this->quoteTable$table$this->quoteTable";
 	}
 
 
