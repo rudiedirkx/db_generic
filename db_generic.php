@@ -1338,6 +1338,10 @@ abstract class db_generic_model extends db_generic_record {
 		return new db_generic_relationship_one($this, $targetClass, $foreignColumn);
 	}
 
+	public function to_first( $targetClass, $foreignColumn ) {
+		return new db_generic_relationship_first($this, $targetClass, $foreignColumn);
+	}
+
 	public function to_many( $targetClass, $foreignColumn ) {
 		return new db_generic_relationship_many($this, $targetClass, $foreignColumn);
 	}
@@ -1474,7 +1478,36 @@ class db_generic_relationship_one extends db_generic_relationship {
 		$targets = call_user_func([$this->target, 'all'], ['id' => array_unique($foreignIds)]);
 
 		foreach ( $objects as $object ) {
-			$object->$name = @$targets[$object->$foreignColumn];
+			$object->$name = $targets[$object->$foreignColumn] ?? null;
+		}
+
+		count($targets) and $this->loadEagers($targets);
+
+		return $targets;
+	}
+}
+
+class db_generic_relationship_first extends db_generic_relationship {
+	protected function fetch() {
+		$object = call_user_func([$this->target, 'first'], [$this->foreign => $this->source->id]);
+		$object and $this->loadEagers([$object]);
+		return $object;
+	}
+
+	protected function fetchAll( array $objects ) {
+		$name = $this->name;
+		$foreignColumn = $this->foreign;
+
+		$foreignIds = $this->getForeignIds($objects, 'id');
+		$targets = call_user_func([$this->target, 'all'], [$foreignColumn => array_unique($foreignIds)]);
+
+		$indexed = [];
+		foreach ( $targets as $target ) {
+			$indexed[$target->$foreignColumn] = $target;
+		}
+
+		foreach ( $objects as $object ) {
+			$object->$name = $indexed[$object->id] ?? null;
 		}
 
 		count($targets) and $this->loadEagers($targets);
