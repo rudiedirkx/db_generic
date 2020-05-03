@@ -141,14 +141,19 @@ abstract class db_generic {
 
 		$ph = self::$replaceholder;
 		$offset = 0;
-		foreach ( (array)$params AS $param ) {
+		while (count($params)) {
+			$param = array_shift($params);
 			$pos = strpos($conditions, $ph, $offset);
 			if ( false === $pos ) {
-				break;
+				throw new InvalidArgumentException("Too many params in replaceholders()");
 			}
 			$param = is_array($param) ? implode(', ', array_map(array($this, 'escapeAndQuoteValue'), $param)) : $this->escapeAndQuoteValue((string)$param);
 			$conditions = substr_replace($conditions, $param, $pos, strlen($ph));
 			$offset = $pos + strlen($param);
+		}
+
+		if (strpos($conditions, $ph, $offset) !== false) {
+			throw new InvalidArgumentException("Too few params in replaceholders()");
 		}
 
 		return $conditions;
