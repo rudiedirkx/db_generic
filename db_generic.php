@@ -141,8 +141,7 @@ abstract class db_generic {
 
 		$ph = self::$replaceholder;
 		$offset = 0;
-		while (count($params)) {
-			$param = array_shift($params);
+		foreach ( (array)$params AS $param ) {
 			$pos = strpos($conditions, $ph, $offset);
 			if ( false === $pos ) {
 				throw new InvalidArgumentException("Too many params in replaceholders()");
