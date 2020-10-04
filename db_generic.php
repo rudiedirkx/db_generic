@@ -378,14 +378,14 @@ abstract class db_generic {
 
 	public function count( $table, $conditions = '', $params = array() ) {
 		$conditions = $this->replaceholders($conditions, $params);
-		$conditions or $conditions = '1';
+		$conditions or $conditions = '1=1';
 		$r = (int)$this->select_one($table, 'count(1)', $conditions);
 		return $r;
 	}
 
 	public function max( $table, $field, $conditions = '', $params = array() ) {
 		$conditions = $this->replaceholders($conditions, $params);
-		$conditions or $conditions = '1';
+		$conditions or $conditions = '1=1';
 
 		$r = $this->select_one($table, 'max(' . $field . ')', $conditions);
 
@@ -396,7 +396,7 @@ abstract class db_generic {
 
 	public function min( $table, $field, $conditions = '', $params = array() ) {
 		$conditions = $this->replaceholders($conditions, $params);
-		$conditions or $conditions = '1';
+		$conditions or $conditions = '1=1';
 		$r = (int)$this->select_one($table, 'min(' . $field . ')', $conditions);
 		return $r;
 	}
@@ -688,18 +688,18 @@ abstract class db_generic {
 		try {
 			$this->insert('_version', array('_version' => $version));
 		}
-		catch (db_exception $ex) {}
+		catch (db_exception $ex) {
+			// throw $ex;
+		}
 	}
 
 	protected function hasSchemaVersion($version) {
 		try {
-			return $this->count('_version', ['_version' => $version]) > 0;
+			$versions = $this->select_fields('_version', '_version', '1=1');
+			return in_array($version, $versions);
 		}
 		catch (db_exception $ex) {
-			try {
-				$this->table('_version', ['_version' => ['unique' => true]]);
-			}
-			catch (db_exception $ex) {}
+			$this->table('_version', ['_version' => ['unique' => true]]);
 		}
 
 		return false;
@@ -710,7 +710,7 @@ abstract class db_generic {
 			return [];
 		}
 
-		$ran = $this->select_fields('_version', '_version', '1');
+		$ran = $this->select_fields('_version', '_version', '1=1');
 
 		$new = [];
 		foreach ($schema['updates'] as $index => $callback) {
