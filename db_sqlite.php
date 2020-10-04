@@ -1,45 +1,31 @@
 <?php
 
-class db_sqlite extends db_generic {
+require_once __DIR__ . '/db_pdo.php';
 
-	public $affected = 0;
+class db_sqlite extends db_pdo {
 
 	protected function __construct( $params ) {
-		$this->params = $params;
-	}
-
-	public function connect() {
-		if ( $this->params === false ) return;
-
-		try {
-			$this->db = new PDO('sqlite:' . $this->params['database']);
-
-			// Add custom functions
-			$this->db->sqliteCreateFunction('REGEXP', array(__CLASS__, 'fn_regexp'));
-			$this->db->sqliteCreateFunction('IF', array(__CLASS__, 'fn_if'));
-			$this->db->sqliteCreateFunction('RAND', array(__CLASS__, 'fn_rand'));
-			$this->db->sqliteCreateFunction('CONCAT', array(__CLASS__, 'fn_concat'));
-			$this->db->sqliteCreateFunction('FROM_UNIXTIME', array(__CLASS__, 'fn_from_unixtime'));
-
-			// Add simple functions
-			$this->db->sqliteCreateFunction('CEIL', 'ceil');
-			$this->db->sqliteCreateFunction('FLOOR', 'floor');
-			$this->db->sqliteCreateFunction('INTVAL', 'intval');
-			$this->db->sqliteCreateFunction('FLOATVAL', 'floatval');
-			$this->db->sqliteCreateFunction('LOWER', 'mb_strtolower');
-			$this->db->sqliteCreateFunction('UPPER', 'mb_strtoupper');
-			$this->db->sqliteCreateFunction('SHA1', 'sha1');
-			$this->db->sqliteCreateFunction('MD5', 'md5');
-
-			$this->params = false;
-			$this->postConnect($this->params);
-		}
-		catch ( PDOException $ex ) {
-			return $this->except('', $ex->getMessage(), $ex->getCode());
-		}
+		parent::__construct('sqlite:' . $params['database']);
 	}
 
 	protected function postConnect($params) {
+		// Add custom functions
+		$this->db->sqliteCreateFunction('REGEXP', array(__CLASS__, 'fn_regexp'));
+		$this->db->sqliteCreateFunction('IF', array(__CLASS__, 'fn_if'));
+		$this->db->sqliteCreateFunction('RAND', array(__CLASS__, 'fn_rand'));
+		$this->db->sqliteCreateFunction('CONCAT', array(__CLASS__, 'fn_concat'));
+		$this->db->sqliteCreateFunction('FROM_UNIXTIME', array(__CLASS__, 'fn_from_unixtime'));
+
+		// Add simple functions
+		$this->db->sqliteCreateFunction('CEIL', 'ceil');
+		$this->db->sqliteCreateFunction('FLOOR', 'floor');
+		$this->db->sqliteCreateFunction('INTVAL', 'intval');
+		$this->db->sqliteCreateFunction('FLOATVAL', 'floatval');
+		$this->db->sqliteCreateFunction('LOWER', 'mb_strtolower');
+		$this->db->sqliteCreateFunction('UPPER', 'mb_strtoupper');
+		$this->db->sqliteCreateFunction('SHA1', 'sha1');
+		$this->db->sqliteCreateFunction('MD5', 'md5');
+
 		// set encoding
 		$this->execute('PRAGMA encoding="UTF-8"');
 
@@ -53,92 +39,6 @@ class db_sqlite extends db_generic {
 		return $this->execute('PRAGMA foreign_keys = ON');
 	}
 
-
-	public function begin() {
-		$this->connect();
-		return $this->db->beginTransaction();
-	}
-
-	public function commit() {
-		$this->connect();
-		return $this->db->commit();
-	}
-
-	public function rollback() {
-		$this->connect();
-		return $this->db->rollBack();
-	}
-
-
-	public function query( $query, $params = array() ) {
-		$this->connect();
-
-		$query = $this->replaceholders($query, $params);
-		$_time = microtime(1);
-
-		try {
-			$q = @$this->db->query($query);
-			if ( !$q ) {
-				$this->logQuery($query, $_time, $this->error());
-				return $this->except($query, $this->error());
-			}
-			else {
-				$this->logQuery($query, $_time);
-			}
-		}
-		catch ( PDOException $ex ) {
-			$this->logQuery($query, $_time, $ex->getMessage());
-			return $this->except($query, $ex->getMessage());
-		}
-
-		return $q;
-	}
-
-	public function execute( $query, $params = array() ) {
-		$this->connect();
-
-		$query = $this->replaceholders($query, $params);
-		$_time = microtime(1);
-
-		try {
-			$r = @$this->db->exec($query);
-			if ( false === $r ) {
-				$this->logQuery($query, $_time, $this->error());
-				return $this->except($query, $this->error());
-			}
-			else {
-				$this->logQuery($query, $_time);
-			}
-		}
-		catch ( PDOException $ex ) {
-			$this->logQuery($query, $_time, $ex->getMessage());
-			return $this->except($query, $ex->getMessage());
-		}
-
-		$this->affected = $r;
-
-		return true;
-	}
-
-	public function error( $error = null ) {
-		$this->connect();
-		$err = $this->db->errorInfo();
-		return $err[2];
-	}
-
-	public function errno( $errno = null ) {
-		$this->connect();
-		return $this->db->errorCode();
-	}
-
-	public function affected_rows() {
-		return $this->affected;
-	}
-
-	public function insert_id() {
-		$this->connect();
-		return $this->db->lastInsertId();
-	}
 
 	public function escapeValue( $value ) {
 		return str_replace("'", "''", (string)$value);
@@ -244,13 +144,13 @@ class db_sqlite extends db_generic {
 				}
 
 				// Case-insensitive (not the default in SQLite)
-				if ( 'TEXT' == $type ) {
+				if ( 'TEXT' == $type && ($details['ci'] ?? true) === true ) {
 					$properties[] = 'COLLATE NOCASE';
 				}
 			}
 
 			// SQL
-			$sql = '"' . $columnName . '" ' . implode(' ', $properties);
+			$sql = $this->quoteColumn($columnName) . ' ' . implode(' ', $properties);
 
 			// return SQL
 			if ( $returnSQL ) {
@@ -317,35 +217,3 @@ class db_sqlite extends db_generic {
 	}
 
 }
-
-
-
-class db_sqlite_result extends db_generic_result {
-
-	static public function make( $db, $result, $options ) {
-		return false !== $result ? new self($db, $result, $options) : false;
-	}
-
-
-	public function singleValue( $args = array() ) {
-		return $this->result->fetchColumn(0);
-	}
-
-
-	public function nextObject( $args = array() ) {
-		return $this->result->fetchObject($this->class);
-	}
-
-
-	public function nextAssocArray() {
-		return $this->result->fetch(PDO::FETCH_ASSOC);
-	}
-
-
-	public function nextNumericArray() {
-		return $this->result->fetch(PDO::FETCH_NUM);
-	}
-
-}
-
-

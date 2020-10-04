@@ -42,8 +42,9 @@ class db_mysql extends db_generic {
 			return $this->except('', $this->db->connect_error, $this->db->connect_errno);
 		}
 
+		$params = $this->params;
 		$this->params = false;
-		$this->postConnect($this->params);
+		$this->postConnect($params);
 	}
 
 	protected function postConnect( $params ) {
@@ -215,17 +216,12 @@ class db_mysql extends db_generic {
 					if ( 'VARCHAR' == $type )  {
 						$details['size'] = 255;
 					}
-					else if ( 'INT' == $type )  {
-						$details['size'] = 10;
-					}
 				}
 				else {
 					if ( 1 == $details['size'] ) {
 						$type = 'TINYINT';
 					}
 				}
-
-				isset($details['size']) && $type .= '(' . (int)$details['size'] . ')';
 
 				isset($details['options']) && $type .= '(' . implode(', ', array_map(array($this, 'escapeAndQuote'), $details['options'])) . ')';
 

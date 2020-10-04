@@ -1500,7 +1500,8 @@ class db_generic_relationship_one extends db_generic_relationship {
 
 class db_generic_relationship_first extends db_generic_relationship {
 	protected function fetch() {
-		$object = call_user_func([$this->target, 'first'], [$this->foreign => $this->source->id]);
+		$where = $this->getWhereOrder([$this->foreign => $this->source->id]);
+		$object = call_user_func([$this->target, 'first'], $where);
 		$object and $this->loadEagers([$object]);
 		return $object;
 	}
@@ -1510,7 +1511,8 @@ class db_generic_relationship_first extends db_generic_relationship {
 		$foreignColumn = $this->foreign;
 
 		$foreignIds = $this->getForeignIds($objects, 'id');
-		$targets = call_user_func([$this->target, 'all'], [$foreignColumn => array_unique($foreignIds)]);
+		$where = $this->getWhereOrder([$foreignColumn => array_unique($foreignIds)]);
+		$targets = call_user_func([$this->target, 'all'], $where);
 
 		$indexed = [];
 		foreach ( $targets as $target ) {

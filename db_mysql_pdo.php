@@ -17,8 +17,9 @@ class db_mysql_pdo extends db_mysql {
 			return $this->except('', $ex->getMessage(), $ex->getCode());
 		}
 
+		$params = $this->params;
 		$this->params = false;
-		$this->postConnect($this->params);
+		$this->postConnect($params);
 	}
 
 
