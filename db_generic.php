@@ -118,7 +118,8 @@ abstract class db_generic {
 			call_user_func($this->queryLogger, $query, $ms, $error);
 		}
 		elseif ( is_array($this->queries) ) {
-			$this->queries[] = '[' . number_format($ms, 1) . 'ms] ' . $query;
+			$error = $error ? " -- ERROR: $error" : '';
+			$this->queries[] = '[' . number_format($ms, 1) . 'ms] ' . $query . $error;
 		}
 	}
 
