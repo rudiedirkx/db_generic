@@ -1654,7 +1654,8 @@ class db_generic_relationship_many_scalar extends db_generic_relationship {
 
 	protected function fetch() {
 		$db = $this->db();
-		return $db->select_fields_numeric($this->throughTable, $this->target, [$this->foreign => $this->source->id]);
+		$where = $this->getWhereOrder([$this->foreign => $this->source->id]);
+		return $db->select_fields_numeric($this->throughTable, $this->target, $where);
 	}
 
 	protected function fetchAll( array $objects ) {
@@ -1662,8 +1663,8 @@ class db_generic_relationship_many_scalar extends db_generic_relationship {
 		$db = $this->db();
 
 		$ids = array_flip($this->getForeignIds($objects, 'id'));
-
-		$links = $db->select($this->throughTable, [$this->foreign => array_keys($ids)])->all();
+		$where = $this->getWhereOrder([$this->foreign => array_keys($ids)]);
+		$links = $db->fetch("select $this->foreign, $this->target from $this->throughTable where $where")->all();
 
 		foreach ( $objects as $object ) {
 			$object->$name = [];
