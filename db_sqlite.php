@@ -11,6 +11,7 @@ class db_sqlite extends db_pdo {
 	protected function postConnect($params) {
 		// Add custom functions
 		$this->db->sqliteCreateFunction('REGEXP', array(__CLASS__, 'fn_regexp'));
+		$this->db->sqliteCreateFunction('REGEXP_REPLACE', array(__CLASS__, 'fn_regexp_replace'));
 		$this->db->sqliteCreateFunction('IF', array(__CLASS__, 'fn_if'));
 		$this->db->sqliteCreateFunction('RAND', array(__CLASS__, 'fn_rand'));
 		$this->db->sqliteCreateFunction('CONCAT', array(__CLASS__, 'fn_concat'));
@@ -34,6 +35,9 @@ class db_sqlite extends db_pdo {
 		$this->execute('PRAGMA journal_mode=OFF');
 	}
 
+	public function addFunction($name, $callable) {
+		$this->db->sqliteCreateFunction($name, $callable);
+	}
 
 	public function enableForeignKeys() {
 		return $this->execute('PRAGMA foreign_keys = ON');

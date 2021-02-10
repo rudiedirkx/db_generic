@@ -25,6 +25,11 @@ abstract class db_generic {
 		return preg_match($pattern, $subject);
 	}
 
+	static function fn_regexp_replace($pattern, $replacement, $subject) {
+		$pattern = '/' . $pattern . '/i';
+		return preg_replace($pattern, $replacement, $subject);
+	}
+
 	static function fn_if( $f_bool, $f_yes = 1, $f_no = 0 ) {
 		return $f_bool ? $f_yes : $f_no;
 	}
