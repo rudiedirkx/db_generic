@@ -663,7 +663,7 @@ abstract class db_generic {
 		return !$this->hasSchemaVersion($schema['version']) || count($this->getNewUpdates($schema));
 	}
 
-	public function ensureSchema(array $schema, callable $callback = null) {
+	public function ensureSchema(array $schema, callable $afterUpdates = null) {
 		$this->enableForeignKeys();
 
 		$changes = [];
@@ -677,7 +677,7 @@ abstract class db_generic {
 					$this->setSchemaVersion($index);
 				}
 
-				$callback and $callback($changes);
+				$afterUpdates and $afterUpdates($changes);
 			}
 			catch (db_exception $ex) {
 				echo '<pre>';
