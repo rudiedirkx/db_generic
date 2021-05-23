@@ -10,6 +10,7 @@
         }
     ],
     "autoload": {
+        "exclude-from-classmap": ["/test/"],
         "classmap": ["./"]
     },
     "require": {}
