@@ -1363,8 +1363,12 @@ abstract class db_generic_model extends db_generic_record {
 		return new db_generic_relationship_many($this, $targetClass, $foreignColumn);
 	}
 
+	public function to_aggregate( $targetTable, $aggregate, $foreignColumn ) {
+		return new db_generic_relationship_aggregate($this, $targetTable, $aggregate, $foreignColumn);
+	}
+
 	public function to_count( $targetTable, $foreignColumn ) {
-		return new db_generic_relationship_count($this, $targetTable, $foreignColumn);
+		return $this->to_aggregate($targetTable, 'COUNT(1)', $foreignColumn);
 	}
 
 	public function to_many_through( $targetClass, $throughRelationship ) {
@@ -1395,6 +1399,23 @@ abstract class db_generic_model extends db_generic_record {
 
 		$relationship = call_user_func([new static(), "relate_$name"]);
 		return $relationship->name($name)->loadAll($objects);
+	}
+
+	static public function eagers( array $objects, array $names ) {
+		if ( count($objects) == 0 ) return;
+
+		$return = [];
+		foreach ( $names as $name ) {
+			$parts = explode('.', $name);
+			$sources = count($parts) == 1 ? $objects : $return[ implode('.', array_slice($parts, 0, -1)) ];
+			if ( count($sources) == 0 ) {
+				$return[$name] = [];
+				continue;
+			}
+
+			$class = get_class(reset($sources));
+			$return[$name] = call_user_func([$class, 'eager'], end($parts), $sources);
+		}
 	}
 
 
@@ -1568,11 +1589,29 @@ class db_generic_relationship_many extends db_generic_relationship {
 	}
 }
 
-class db_generic_relationship_count extends db_generic_relationship {
+class db_generic_relationship_aggregate extends db_generic_relationship {
+	protected $aggregate;
+	protected $caster = 'intval';
+
+	public function __construct( db_generic_model $source = null, $targetTable, $aggregate, $foreignColumn ) {
+		parent::__construct($source, $targetTable, $foreignColumn);
+
+		$this->aggregate = $aggregate;
+	}
+
+	public function caster( callable $caster ) {
+		$this->caster = $caster;
+		return $this;
+	}
+
+	protected function castAggregate( $value ) {
+		return /*$value === null ? null :*/ call_user_func($this->caster, $value);
+	}
+
 	protected function fetch() {
 		$db = $this->db();
 		$where = $this->getWhereOrder([$this->foreign => $this->source->id]);
-		return $db->count($this->target, $where);
+		return $this->castAggregate($db->select_one($this->target, $this->aggregate, $where));
 	}
 
 	protected function fetchAll( array $objects ) {
@@ -1585,10 +1624,10 @@ class db_generic_relationship_count extends db_generic_relationship {
 		$where = $this->getWhereOrder([$foreignColumn => array_keys($ids)]);
 		$where .= ' GROUP BY ' . $qForeignColumn;
 
-		$targets = $db->select_fields($this->target, $qForeignColumn . ', COUNT(1)', $where);
+		$targets = $db->select_fields($this->target, $qForeignColumn . ', ' . $this->aggregate, $where);
 
 		foreach ( $ids as $id => $index ) {
-			$objects[$index]->$name = (int) ($targets[$id] ?? 0);
+			$objects[$index]->$name = $this->castAggregate($targets[$id] ?? null);
 		}
 
 		return $targets;
