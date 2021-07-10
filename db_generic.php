@@ -1317,6 +1317,15 @@ abstract class db_generic_model extends db_generic_record {
 	}
 
 	/** @return void */
+	static function presaveNull( array &$data, array $cols ) {
+		foreach ( $cols as $name ) {
+			if ( isset($data[$name]) && $data[$name] === '' ) {
+				$data[$name] = null;
+			}
+		}
+	}
+
+	/** @return void */
 	function init() {
 	}
 
