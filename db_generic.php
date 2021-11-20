@@ -100,7 +100,7 @@ abstract class db_generic {
 	}
 
 	public function escapeAndQuoteTable( $table ) {
-		return $this->quoteTable($this->escapeTable($table));
+		return is_int(stripos($table, ' as ')) ? $table : $this->quoteTable($this->escapeTable($table));
 	}
 
 	public function escapeColumn( $column ) {
