@@ -1255,6 +1255,11 @@ abstract class db_generic_model extends db_generic_record {
 		return static::$_db->count(static::$_table, $conditions, $params);
 	}
 
+	/** @return array */
+	static function fields( $fields, $conditions, array $params = array() ) {
+		return static::$_db->select_fields(static::$_table, $fields, $conditions, $params);
+	}
+
 	/** @return int|bool */
 	static function insert( array $data ) {
 		static::presave($data);
