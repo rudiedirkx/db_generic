@@ -748,7 +748,7 @@ class db_generic_query_conditions implements Countable {
 		return $this;
 	}
 
-	public function count() {
+	public function count() : int {
 		return count($this->conditions);
 	}
 }
@@ -967,26 +967,26 @@ abstract class db_generic_result implements Iterator {
 
 
 	// Iterator methods
-	public function current() {
+	public function current() /*: mixed*/ {
 		return $this->record;
 	}
 
-	public function key() {
+	public function key() /*: mixed*/ {
 		if ( isset($this->options['by_field']) && property_exists($this->record, $this->options['by_field']) ) {
 			return $this->record->{$this->options['by_field']};
 		}
 		return $this->index;
 	}
 
-	public function next() {
+	public function next() : void {
 		$this->index++;
 	}
 
-	public function rewind() {
+	public function rewind() : void {
 		$this->index = 0;
 	}
 
-	public function valid() {
+	public function valid() : bool {
 		return (bool)($this->record = $this->nextMatchingObject());
 	}
 
@@ -1146,20 +1146,20 @@ class db_generic_record implements ArrayAccess {
 		}
 	}
 
-	public function offsetExists( $offset ) {
+	public function offsetExists( $offset ) : bool {
 		return property_exists($this, $offset);
 	}
 
-	public function offsetGet( $offset ) {
+	public function offsetGet( $offset ) /*: mixed*/ {
 		return $this->$offset;
 	}
 
-	public function offsetSet( $offset, $value ) {
+	public function offsetSet( $offset, $value ) : void {
 		$offset = (string)$offset;
 		$this->$offset = $value;
 	}
 
-	public function offsetUnset( $offset ) {
+	public function offsetUnset( $offset ) : void {
 		unset($this->$offset);
 	}
 
@@ -1810,15 +1810,15 @@ class db_generic_collection implements ArrayAccess, IteratorAggregate, Countable
 
 
 	// ArrayAccess
-	public function offsetExists( $offset ) {
+	public function offsetExists( $offset ) : bool {
 		return isset($this->items[$offset]);
 	}
 
-	public function offsetGet( $offset ) {
+	public function offsetGet( $offset ) /*: mixed*/ {
 		return $this->items[$offset];
 	}
 
-	public function offsetSet( $offset, $value ) {
+	public function offsetSet( $offset, $value ) : void {
 		if ( null === $offset ) {
 			$this->items[] = $value;
 		}
@@ -1830,19 +1830,19 @@ class db_generic_collection implements ArrayAccess, IteratorAggregate, Countable
 		}
 	}
 
-	public function offsetUnset( $offset ) {
+	public function offsetUnset( $offset ) : void {
 		unset($this->items[$offset]);
 	}
 
 
 	// IteratorAggregate
-	public function getIterator() {
+	public function getIterator() : Traversable {
 		return new ArrayIterator($this->items);
 	}
 
 
 	// Countable
-	public function count() {
+	public function count() : int {
 		return count($this->items);
 	}
 
