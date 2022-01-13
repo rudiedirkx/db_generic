@@ -223,7 +223,12 @@ class db_mysql extends db_generic {
 					}
 				}
 
-				isset($details['options']) && $type .= '(' . implode(', ', array_map(array($this, 'escapeAndQuote'), $details['options'])) . ')';
+				if ( !empty($details['options']) ) {
+					$type .= '(' . implode(', ', array_map(array($this, 'escapeAndQuote'), (array) $details['options'])) . ')';
+				}
+				elseif ( !empty($details['size']) ) {
+					$type .= '(' . (int) $details['size'] . ')';
+				}
 
 				$properties[] = $type;
 
