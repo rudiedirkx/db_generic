@@ -171,7 +171,7 @@ abstract class db_generic {
 	public function transaction( $callable ) {
 		try {
 			$this->begin();
-			$return = call_user_func($transaction, $this);
+			$return = call_user_func($callable, $this);
 			$this->commit();
 
 			return $return;
