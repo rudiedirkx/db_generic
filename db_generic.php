@@ -167,22 +167,19 @@ abstract class db_generic {
 	abstract public function begin();
 	abstract public function commit();
 	abstract public function rollback();
-	public function transaction( $transaction, &$context = array() ) {
-		if ( is_callable($transaction) ) {
-			try {
-				$this->begin();
-				$context['result'] = call_user_func($transaction, $this, $context);
-				$this->commit();
 
-				return true;
-			}
-			catch ( Exception $ex ) {
-				$this->rollback(); // I don't think an explicit rollback is necessary...
+	public function transaction( $callable ) {
+		try {
+			$this->begin();
+			$return = call_user_func($transaction, $this);
+			$this->commit();
 
-				$context['exception'] = $ex;
+			return $return;
+		}
+		catch ( Exception $ex ) {
+			$this->rollback();
 
-				return false;
-			}
+			throw $ex;
 		}
 	}
 
