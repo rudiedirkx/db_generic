@@ -304,10 +304,9 @@ class db_mysql extends db_generic {
 
 			// subject columns
 			$columns = array_map(array($this, 'escapeAndQuoteTable'), $indexDefinition['columns']);
-			$columns = implode(', ', $columns);
 
 			// full SQL
-			$sql = 'CREATE '.$unique.' INDEX "'.$indexName.'" ON "'.$tableName.'" ('.$columns.')';
+			$sql = "CREATE $unique INDEX " . $this->escapeAndQuoteTable($indexName) . ' ON ' . $this->escapeAndQuoteTable($tableName) . ' (' . implode(', ', $columns) . ')';
 
 			if ( $returnSQL ) {
 				return $sql;
