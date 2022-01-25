@@ -1269,6 +1269,13 @@ abstract class db_generic_model extends db_generic_record {
 		return false;
 	}
 
+	/** @return self */
+	static function create( array $data ) {
+		if ( $id = static::insert($data) ) {
+			return static::find($id);
+		}
+	}
+
 	/** @return bool */
 	static function insertAll( array $datas ) {
 		foreach ( $datas as &$data ) {
@@ -1314,7 +1321,7 @@ abstract class db_generic_model extends db_generic_record {
 	/** @return void */
 	static function presaveTrim( array &$data ) {
 		$data = array_map(function($datum) {
-			return is_null($datum) || is_bool($datum) ? $datum : (is_scalar($datum) ? trim($datum) : array_filter($datum));
+			return is_null($datum) || is_bool($datum) ? $datum : (is_scalar($datum) ? rtrim($datum) : array_filter($datum));
 		}, $data);
 	}
 
