@@ -964,10 +964,12 @@ abstract class db_generic_result implements Iterator {
 
 
 	// Iterator methods
+	#[\ReturnTypeWillChange]
 	public function current() /*: mixed*/ {
 		return $this->record;
 	}
 
+	#[\ReturnTypeWillChange]
 	public function key() /*: mixed*/ {
 		if ( isset($this->options['by_field']) && property_exists($this->record, $this->options['by_field']) ) {
 			return $this->record->{$this->options['by_field']};
@@ -1147,6 +1149,7 @@ class db_generic_record implements ArrayAccess {
 		return property_exists($this, $offset);
 	}
 
+	#[\ReturnTypeWillChange]
 	public function offsetGet( $offset ) /*: mixed*/ {
 		return $this->$offset;
 	}
@@ -1818,6 +1821,7 @@ class db_generic_collection implements ArrayAccess, IteratorAggregate, Countable
 		return isset($this->items[$offset]);
 	}
 
+	#[\ReturnTypeWillChange]
 	public function offsetGet( $offset ) /*: mixed*/ {
 		return $this->items[$offset];
 	}
