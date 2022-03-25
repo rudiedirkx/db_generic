@@ -1319,6 +1319,13 @@ abstract class db_generic_model extends db_generic_record {
 
 	/** @return void */
 	static function presave( array &$data ) {
+		static::presaveId($data);
+		static::presaveTrim($data);
+	}
+
+	/** @return void */
+	static function presaveId( array &$data ) {
+		unset($data['id']);
 	}
 
 	/** @return void */
