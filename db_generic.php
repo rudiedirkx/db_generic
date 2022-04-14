@@ -1139,10 +1139,30 @@ abstract class db_generic_result implements Iterator {
 
 class db_generic_record implements ArrayAccess {
 
-	public function __construct( $data = array() ) {
-		foreach ( $data as $key => $value ) {
-			$this->$key = $value;
+	public $_got = [];
+
+	public function __construct( array $data = [] ) {
+		$this->fill($data);
+	}
+
+	public function clear() {
+		foreach ( array_unique($this->_got) as $name ) {
+			unset($this->$name);
 		}
+		$this->_got = [];
+	}
+
+	public function init() {
+	}
+
+	public function fill( array $props ) {
+		$this->clear();
+
+		foreach ( $props as $name => $value ) {
+			$this->$name = $value;
+		}
+
+		$this->init();
 	}
 
 	public function offsetExists( $offset ) : bool {
@@ -1168,15 +1188,22 @@ class db_generic_record implements ArrayAccess {
 		return is_callable(array($this, 'get_' . $name));
 	}
 
+	public function _set( $name, $value ) {
+		$this->_got[] = $name;
+		$this->$name = $value;
+		return $value;
+	}
+
 	public function __isset( $name ) {
 		return $this->_gettable($name);
 	}
 
 	public function &__get( $name ) {
-		$this->$name = NULL;
-
 		if ( is_callable($method = array($this, 'get_' . $name)) ) {
-			$this->$name = call_user_func($method);
+			$this->_set($name, call_user_func($method));
+		}
+		else {
+			$this->_set($name, null);
 		}
 
 		return $this->$name;
@@ -1344,19 +1371,6 @@ abstract class db_generic_model extends db_generic_record {
 		}
 	}
 
-	/** @return void */
-	function init() {
-	}
-
-	/** @return void */
-	function fill( array $props ) {
-		foreach ( $props as $name => $value ) {
-			$this->$name = $value;
-		}
-
-		$this->init();
-	}
-
 	/** @return static */
 	function refresh() {
 		$data = static::$_db->select(static::$_table, ['id' => $this->id]);
@@ -1413,7 +1427,7 @@ abstract class db_generic_model extends db_generic_record {
 
 	public function &__get( $name ) {
 		if ( is_callable($method = array($this, 'relate_' . $name)) ) {
-			$this->$name = call_user_func($method)->name($name)->load();
+			$this->_set($name, call_user_func($method)->name($name)->load());
 			return $this->$name;
 		}
 
@@ -1544,7 +1558,7 @@ class db_generic_relationship_one extends db_generic_relationship {
 		$targets = call_user_func([$this->target, 'all'], ['id' => array_unique($foreignIds)]);
 
 		foreach ( $objects as $object ) {
-			$object->$name = $targets[$object->$foreignColumn] ?? null;
+			$object->_set($name, $targets[$object->$foreignColumn] ?? null);
 		}
 
 		count($targets) and $this->loadEagers($targets);
@@ -1575,7 +1589,7 @@ class db_generic_relationship_first extends db_generic_relationship {
 		}
 
 		foreach ( $objects as $object ) {
-			$object->$name = $indexed[$object->id] ?? null;
+			$object->_set($name, $indexed[$object->id] ?? null);
 		}
 
 		count($targets) and $this->loadEagers($targets);
@@ -1602,7 +1616,7 @@ class db_generic_relationship_many extends db_generic_relationship {
 		$targets = call_user_func([$this->target, 'all'], $where);
 
 		foreach ( $objects as $object ) {
-			$object->$name = [];
+			$object->_set($name, []);
 		}
 
 		foreach ( $targets as $target ) {
@@ -1655,7 +1669,7 @@ class db_generic_relationship_aggregate extends db_generic_relationship {
 		$targets = $db->select_fields($this->target, $qForeignColumn . ', ' . $this->aggregate, $where);
 
 		foreach ( $ids as $id => $index ) {
-			$objects[$index]->$name = $this->castAggregate($targets[$id] ?? null);
+			$objects[$index]->_set($name, $this->castAggregate($targets[$id] ?? null));
 		}
 
 		return $targets;
@@ -1706,7 +1720,7 @@ class db_generic_relationship_many_through extends db_generic_relationship {
 		}
 
 		foreach ( $objects as $object ) {
-			$object->$name = $grouped[$object->id] ?? [];
+			$object->_set($name, $grouped[$object->id] ?? []);
 		}
 
 		count($targets) and $this->loadEagers($targets);
@@ -1739,7 +1753,7 @@ class db_generic_relationship_many_scalar extends db_generic_relationship {
 		$links = $db->fetch("select $this->foreign, $this->target from $this->throughTable where $where")->all();
 
 		foreach ( $objects as $object ) {
-			$object->$name = [];
+			$object->_set($name, []);
 		}
 
 		foreach ( $links as $link ) {
