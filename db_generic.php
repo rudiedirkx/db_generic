@@ -920,7 +920,7 @@ class db_generic_query {
 
 
 
-abstract class db_generic_result implements Iterator {
+abstract class db_generic_result implements Iterator, Countable {
 
 	static public $return_object_class = 'db_generic_record';
 
@@ -961,6 +961,12 @@ abstract class db_generic_result implements Iterator {
 	abstract public function nextAssocArray();
 
 	abstract public function nextNumericArray();
+
+
+	// Countable methods
+	public function count() : int {
+		return $this->count ??= $this->db->count_rows($this->options['query']);
+	}
 
 
 	// Iterator methods
@@ -1057,11 +1063,11 @@ abstract class db_generic_result implements Iterator {
 		if ( $this->firstRecord ) {
 			$object = $this->firstRecord;
 			$this->firstRecord = null;
-			return $this->init($object);
+			return $object;
 		}
 
 		if ( !$this->mappers && !$this->filters ) {
-			return $this->init($this->nextObject($this->options['args']));
+			return $this->nextObject($this->options['args']);
 		}
 
 		while ( $object = $this->nextObject($this->options['args']) ) {
@@ -1085,16 +1091,8 @@ abstract class db_generic_result implements Iterator {
 				}
 			}
 
-			return $this->init($object);
+			return $object;
 		}
-	}
-
-	public function init( $object ) {
-		if ( $object instanceof db_generic_model ) {
-			$object->init();
-		}
-
-		return $object;
 	}
 
 	public function first() {
