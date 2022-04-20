@@ -1275,6 +1275,12 @@ abstract class db_generic_model extends db_generic_record {
 		}
 	}
 
+	/** @return static[] */
+	static function finds( array $ids ) {
+		if ( !count($ids) ) return [];
+		return static::all(['id' => $ids]);
+	}
+
 	/** @return int */
 	static function count( $conditions, array $params = array() ) {
 		return static::$_db->count(static::$_table, $conditions, $params);
