@@ -162,6 +162,22 @@ class db_mysql extends db_generic {
 		return $cache;
 	}
 
+	public function afterCreateTable( $tableName, $tableDefinition ) {
+		$alters = [];
+		foreach ( $tableDefinition['columns'] as $columnName => $columnDefinition ) {
+			if ( isset($columnDefinition['references']) ) {
+				$alters[] = $this->foreignKeyClause($columnName, $columnDefinition['references']);
+			}
+		}
+
+		if ( count($alters) ) {
+			$sql = 'ALTER TABLE ' . $this->escapeAndQuoteTable($tableName) . ' ' . implode(', ', $alters);
+			return $this->execute($sql);
+		}
+
+		return true;
+	}
+
 	public function columns( $tableName ) {
 		$cache = &$this->metaCache[__FUNCTION__];
 
@@ -253,12 +269,22 @@ class db_mysql extends db_generic {
 				return $sql;
 			}
 
+			$foreign = '';
+			if ( isset($columnDefinition['references']) ) {
+				$foreign = ', ' . $this->foreignKeyClause($columnName, $columnDefinition['references']);
+			}
+
 			// execute
-			$sql = 'ALTER TABLE ' . $this->escapeAndQuoteTable($tableName) . ' ADD COLUMN ' . $sql;
+			$sql = 'ALTER TABLE ' . $this->escapeAndQuoteTable($tableName) . ' ADD COLUMN ' . $sql . $foreign;
 			return $this->execute($sql);
 		}
 
 		return $column;
+	}
+
+	protected function foreignKeyClause( $fromColumn, array $references ) {
+		list($toTable, $toColumn, $onDelete) = array_merge($references, ['RESTRICT']);
+		return 'ADD FOREIGN KEY (' . $this->escapeAndQuoteColumn($fromColumn) . ') REFERENCES ' . $this->escapeAndQuoteTable($toTable) . ' (' . $this->escapeAndQuoteColumn($toColumn) . ') ON DELETE ' . $onDelete;
 	}
 
 	public function indexes( $tableName ) {

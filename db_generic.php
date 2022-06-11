@@ -502,6 +502,7 @@ abstract class db_generic {
 		}
 
 		$updates = array();
+		$afterCreateTables = [];
 
 		// sync tables
 		foreach ( $schema['tables'] AS $tableName => $tableDefinition ) {
@@ -516,6 +517,7 @@ abstract class db_generic {
 			if ( null !== $created ) {
 				// feedback
 				$updates['tables'][$tableName] = $created;
+				$afterCreateTables[$tableName] = $tableDefinition;
 			}
 			else {
 				// table exists
@@ -548,6 +550,10 @@ abstract class db_generic {
 					}
 				}
 			}
+		}
+
+		foreach ( $afterCreateTables as $tableName => $tableDefinition ) {
+			$this->afterCreateTable($tableName, $tableDefinition);
 		}
 
 		// add data
@@ -642,6 +648,9 @@ abstract class db_generic {
 		if ( $table ) {
 			return $table;
 		}
+	}
+
+	public function afterCreateTable( $tableName, $tableDefinition ) {
 	}
 
 	abstract public function columns( $tableName );
