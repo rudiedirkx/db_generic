@@ -12,7 +12,13 @@ abstract class db_pdo extends db_generic {
 		if ( $this->params === false ) return;
 
 		try {
-			$this->db = new PDO($this->params['uri']);
+			$this->db = new PDO($this->params['uri'], null, null, [
+				PDO::ATTR_CASE => PDO::CASE_NATURAL,
+				PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+				PDO::ATTR_ORACLE_NULLS => PDO::NULL_NATURAL,
+				PDO::ATTR_STRINGIFY_FETCHES => false,
+				PDO::ATTR_EMULATE_PREPARES => false,
+			]);
 			$params = $this->params;
 			$this->params = false;
 			$this->postConnect($params);
@@ -127,13 +133,8 @@ class db_pdo_result extends db_generic_result {
 	}
 
 
-	public function singleValue( $args = array() ) {
+	public function singleValue() {
 		return $this->result->fetchColumn(0);
-	}
-
-
-	public function nextObject( $args = array() ) {
-		return $this->result->fetchObject($this->class);
 	}
 
 

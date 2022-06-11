@@ -5,13 +5,19 @@ class db_mysql_pdo extends db_mysql {
 	public function connect() {
 		if ( $this->params === false ) return;
 
-		$host = self::option($this->params, 'host', ini_get('mysqli.default_host'));
+		$host = self::option($this->params, 'host') ?: ini_get('mysqli.default_host') ?: 'localhost';
 		$this->database = self::option($this->params, 'db', self::option($this->params, 'database', ''));
 		$user = self::option($this->params, 'user', ini_get('mysqli.default_user'));
 		$pass = self::option($this->params, 'pass', ini_get('mysqli.default_pw'));
 
 		try {
-			$this->db = new PDO('mysql:host=' . $host . ';dbname=' . $this->database, $user, $pass);
+			$this->db = new PDO('mysql:host=' . $host . ';dbname=' . $this->database, $user, $pass, [
+				PDO::ATTR_CASE => PDO::CASE_NATURAL,
+				PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+				PDO::ATTR_ORACLE_NULLS => PDO::NULL_NATURAL,
+				PDO::ATTR_STRINGIFY_FETCHES => false,
+				PDO::ATTR_EMULATE_PREPARES => false,
+			]);
 		}
 		catch ( PDOException $ex ) {
 			return $this->except('', $ex->getMessage(), $ex->getCode());
@@ -20,6 +26,10 @@ class db_mysql_pdo extends db_mysql {
 		$params = $this->params;
 		$this->params = false;
 		$this->postConnect($params);
+	}
+
+	protected function postConnect( $params ) {
+		$this->execute("SET NAMES 'utf8' COLLATE 'utf8_general_ci'");
 	}
 
 
@@ -108,12 +118,7 @@ class db_mysql_pdo_result extends db_generic_result {
 
 
 	public function singleValue() {
-		return $this->result->fetchColumn();
-	}
-
-
-	public function nextObject( $args = array() ) {
-		return $this->result->fetchObject($this->class);
+		return $this->result->fetchColumn(0);
 	}
 
 
@@ -127,5 +132,3 @@ class db_mysql_pdo_result extends db_generic_result {
 	}
 
 }
-
-

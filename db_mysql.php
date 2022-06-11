@@ -17,6 +17,8 @@ class db_mysql extends db_generic {
 		$this->db = mysqli_init();
 
 		isset($this->params['timeout']) and $this->db->options(MYSQLI_OPT_CONNECT_TIMEOUT, $this->params['timeout']);
+		$this->db->options(MYSQLI_OPT_INT_AND_FLOAT_NATIVE, true);
+		$this->db->options(MYSQLI_SET_CHARSET_NAME, 'utf8');
 
 		$this->database = self::option($this->params, 'db', self::option($this->params, 'database', ''));
 
@@ -48,18 +50,7 @@ class db_mysql extends db_generic {
 	}
 
 	protected function postConnect( $params ) {
-		if ( !isset($params['charset']) || !empty($params['charset']) ) {
-			// set encoding
-			$names = "SET NAMES 'utf8'";
-
-			$collate = '';
-			if ( !empty($params['collate']) ) {
-				$charset = is_string($params['collate']) ? $params['collate'] : 'utf8_general_ci';
-				$collate = " COLLATE '" . $charset . "'";
-			}
-
-			$this->execute($names . $collate);
-		}
+		$this->execute("SET NAMES 'utf8' COLLATE 'utf8_general_ci'");
 	}
 
 	public function connected() {
@@ -332,11 +323,6 @@ class db_mysql_result extends db_generic_result {
 	public function singleValue() {
 		$row = $this->result->fetch_row();
 		return $row ? $row[0] : false;
-	}
-
-
-	public function nextObject( $args = array() ) {
-		return $this->result->fetch_object($this->class);
 	}
 
 

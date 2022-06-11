@@ -956,7 +956,10 @@ abstract class db_generic_result implements Iterator, Countable {
 	// Abstract methods
 	abstract public function singleValue();
 
-	abstract public function nextObject();
+	public function nextObject() {
+		$record = $this->nextAssocArray();
+		return $record ? new $this->class($record) : null;
+	}
 
 	abstract public function nextAssocArray();
 
