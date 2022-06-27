@@ -52,6 +52,7 @@ abstract class db_generic {
 	public $returnAffectedRows = false;
 	public $queryLogger;
 	public $queries = array();
+	protected $versions = null;
 	public $metaCache = array();
 
 	/** @return db_generic */
@@ -661,6 +662,10 @@ abstract class db_generic {
 
 	abstract public function index( $tableName, $indexName, $indexDefinition = null, $returnSQL = false );
 
+	protected function getSchemaVersions() : array {
+		return $this->versions ??= $this->select_fields('_version', '_version', '1=1');
+	}
+
 	protected function needsSchemaUpdate(array $schema) {
 		if ( !isset($schema['version']) ) {
 			return false;
@@ -684,6 +689,8 @@ abstract class db_generic {
 				}
 
 				$afterUpdates and $afterUpdates($changes);
+
+				$this->versions = null;
 			}
 			catch (db_exception $ex) {
 				echo '<pre>';
@@ -707,7 +714,7 @@ abstract class db_generic {
 
 	protected function hasSchemaVersion($version) {
 		try {
-			$versions = $this->select_fields('_version', '_version', '1=1');
+			$versions = $this->getSchemaVersions();
 			return in_array($version, $versions);
 		}
 		catch (db_exception $ex) {
@@ -722,7 +729,7 @@ abstract class db_generic {
 			return [];
 		}
 
-		$ran = $this->select_fields('_version', '_version', '1=1');
+		$ran = $this->getSchemaVersions();
 
 		$new = [];
 		foreach ($schema['updates'] as $index => $callback) {
