@@ -57,7 +57,6 @@ abstract class db_pdo extends db_generic {
 		try {
 			$q = @$this->db->query($query);
 			if ( !$q ) {
-				$this->logQuery($query, $_time, $this->error());
 				return $this->except($query, $this->error());
 			}
 			else {
@@ -81,7 +80,6 @@ abstract class db_pdo extends db_generic {
 		try {
 			$r = @$this->db->exec($query);
 			if ( false === $r ) {
-				$this->logQuery($query, $_time, $this->error());
 				return $this->except($query, $this->error());
 			}
 			else {

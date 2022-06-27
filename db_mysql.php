@@ -98,7 +98,6 @@ class db_mysql extends db_generic {
 		try {
 			$q = @$this->db->query($query);
 			if ( !$q ) {
-				$this->logQuery($query, $_time, $this->error());
 				return $this->except($query, $this->error());
 			}
 			else {
