@@ -681,7 +681,9 @@ abstract class db_generic {
 		if ( $this->needsSchemaUpdate($schema) ) {
 			try {
 				$changes = $this->schema($schema);
-				$this->setSchemaVersion($schema['version']);
+				if ( !$this->hasSchemaVersion($schema['version']) ) {
+					$this->setSchemaVersion($schema['version']);
+				}
 
 				foreach ($this->getNewUpdates($schema) as $index => $callback) {
 					$changes['updates'][$index] = $callback($this);
