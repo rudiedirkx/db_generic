@@ -1156,6 +1156,7 @@ abstract class db_generic_result implements Iterator, Countable {
 
 
 
+#[AllowDynamicProperties]
 class db_generic_record implements ArrayAccess {
 
 	public $_got = [];
