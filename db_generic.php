@@ -674,7 +674,7 @@ abstract class db_generic {
 		return !$this->hasSchemaVersion($schema['version']) || count($this->getNewUpdates($schema));
 	}
 
-	public function ensureSchema(array $schema, callable $afterUpdates = null) {
+	public function ensureSchema(array $schema, ?callable $afterUpdates = null) {
 		$this->enableForeignKeys();
 
 		$changes = [];
@@ -1499,7 +1499,7 @@ abstract class db_generic_relationship {
 	protected $order;
 	protected $key;
 
-	public function __construct( db_generic_model $source = null, $targetClass, $foreignColumn ) {
+	public function __construct( ?db_generic_model $source, $targetClass, $foreignColumn ) {
 		$this->source = $source;
 		$this->target = $targetClass;
 		$this->foreign = $foreignColumn;
@@ -1661,7 +1661,7 @@ class db_generic_relationship_aggregate extends db_generic_relationship {
 	protected $aggregate;
 	protected $caster = 'intval';
 
-	public function __construct( db_generic_model $source = null, $targetTable, $aggregate, $foreignColumn ) {
+	public function __construct( ?db_generic_model $source, $targetTable, $aggregate, $foreignColumn ) {
 		parent::__construct($source, $targetTable, $foreignColumn);
 
 		$this->aggregate = $aggregate;
@@ -1705,7 +1705,7 @@ class db_generic_relationship_aggregate extends db_generic_relationship {
 class db_generic_relationship_many_through extends db_generic_relationship {
 	protected $throughRelationship;
 
-	public function __construct( db_generic_model $source = null, $targetClass, $throughRelationship ) {
+	public function __construct( ?db_generic_model $source, $targetClass, $throughRelationship ) {
 		parent::__construct($source, $targetClass, null);
 
 		$this->throughRelationship = $throughRelationship;
@@ -1758,7 +1758,7 @@ class db_generic_relationship_many_through extends db_generic_relationship {
 class db_generic_relationship_many_scalar extends db_generic_relationship {
 	protected $throughTable;
 
-	public function __construct( db_generic_model $source = null, $targetColumn, $throughTable, $foreignColumn ) {
+	public function __construct( ?db_generic_model $source, $targetColumn, $throughTable, $foreignColumn ) {
 		parent::__construct($source, $targetColumn, $foreignColumn);
 
 		$this->throughTable = $throughTable;
