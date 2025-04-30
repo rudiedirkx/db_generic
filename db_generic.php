@@ -1172,6 +1172,9 @@ class db_generic_record implements ArrayAccess {
 		$this->_got = [];
 	}
 
+	/**
+	 * @return void
+	 */
 	public function init() {
 	}
 
@@ -1239,8 +1242,10 @@ abstract class db_generic_model extends db_generic_record {
 	/** @var db_generic */
 	static public $_db;
 
+	/** @var string */
 	static public $_table = '';
 
+	/** @var array<string, mixed> */
 	static public $_cache = [];
 
 	static function _modelToFromCache( $object = null ) {
@@ -1313,7 +1318,10 @@ abstract class db_generic_model extends db_generic_record {
 		return static::$_db->select_fields(static::$_table, $fields, $conditions, $params);
 	}
 
-	/** @return int|bool */
+	/**
+	 * @param array<string, mixed> $data
+	 * @return int|bool
+	 */
 	static function insert( array $data ) {
 		static::presave($data);
 
@@ -1370,7 +1378,10 @@ abstract class db_generic_model extends db_generic_record {
 		return static::$_db->affected_rows();
 	}
 
-	/** @return void */
+	/**
+	 * @param array<string, mixed> $data
+	 * @return void
+	 */
 	static function presave( array &$data ) {
 		static::presaveId($data);
 		static::presaveTrim($data);
@@ -1404,7 +1415,10 @@ abstract class db_generic_model extends db_generic_record {
 		return $this;
 	}
 
-	/** @return bool */
+	/**
+	 * @param array<string, mixed> $data
+	 * @return bool
+	 */
 	function update( $data ) {
 		if ( is_array($data) ) {
 			static::presave($data);
@@ -1419,31 +1433,31 @@ abstract class db_generic_model extends db_generic_record {
 	}
 
 
-	public function to_one( $targetClass, $foreignColumn ) {
+	public function to_one( $targetClass, $foreignColumn ) : db_generic_relationship_one {
 		return new db_generic_relationship_one($this, $targetClass, $foreignColumn);
 	}
 
-	public function to_first( $targetClass, $foreignColumn ) {
+	public function to_first( $targetClass, $foreignColumn ) : db_generic_relationship_first {
 		return new db_generic_relationship_first($this, $targetClass, $foreignColumn);
 	}
 
-	public function to_many( $targetClass, $foreignColumn ) {
+	public function to_many( $targetClass, $foreignColumn ) : db_generic_relationship_many {
 		return new db_generic_relationship_many($this, $targetClass, $foreignColumn);
 	}
 
-	public function to_aggregate( $targetTable, $aggregate, $foreignColumn ) {
+	public function to_aggregate( $targetTable, $aggregate, $foreignColumn ) : db_generic_relationship_aggregate {
 		return new db_generic_relationship_aggregate($this, $targetTable, $aggregate, $foreignColumn);
 	}
 
-	public function to_count( $targetTable, $foreignColumn ) {
+	public function to_count( $targetTable, $foreignColumn ) : db_generic_relationship_aggregate {
 		return $this->to_aggregate($targetTable, 'COUNT(1)', $foreignColumn);
 	}
 
-	public function to_many_through( $targetClass, $throughRelationship ) {
+	public function to_many_through( $targetClass, $throughRelationship ) : db_generic_relationship_many_through {
 		return new db_generic_relationship_many_through($this, $targetClass, $throughRelationship);
 	}
 
-	public function to_many_scalar( $targetColumn, $throughTable, $foreignColumn ) {
+	public function to_many_scalar( $targetColumn, $throughTable, $foreignColumn ) : db_generic_relationship_many_scalar {
 		return new db_generic_relationship_many_scalar($this, $targetColumn, $throughTable, $foreignColumn);
 	}
 
@@ -1524,6 +1538,8 @@ abstract class db_generic_relationship {
 
 	abstract protected function fetchAll( array $objects );
 
+	abstract public function getReturnType() : string;
+
 	public function name( $name ) {
 		$this->name = $name;
 		return $this;
@@ -1591,6 +1607,10 @@ class db_generic_relationship_one extends db_generic_relationship {
 
 		return $targets;
 	}
+
+	public function getReturnType() : string {
+		return '?' . $this->target;
+	}
 }
 
 class db_generic_relationship_first extends db_generic_relationship {
@@ -1621,6 +1641,10 @@ class db_generic_relationship_first extends db_generic_relationship {
 		count($targets) and $this->loadEagers($targets);
 
 		return $targets;
+	}
+
+	public function getReturnType() : string {
+		return '?' . $this->target;
 	}
 }
 
@@ -1654,6 +1678,10 @@ class db_generic_relationship_many extends db_generic_relationship {
 		count($targets) and $this->loadEagers($targets);
 
 		return $targets;
+	}
+
+	public function getReturnType() : string {
+		return $this->target . '[]';
 	}
 }
 
@@ -1699,6 +1727,10 @@ class db_generic_relationship_aggregate extends db_generic_relationship {
 		}
 
 		return $targets;
+	}
+
+	public function getReturnType() : string {
+		return 'scalar';
 	}
 }
 
@@ -1753,6 +1785,10 @@ class db_generic_relationship_many_through extends db_generic_relationship {
 
 		return $targets;
 	}
+
+	public function getReturnType() : string {
+		return $this->target . '[]';
+	}
 }
 
 class db_generic_relationship_many_scalar extends db_generic_relationship {
@@ -1787,6 +1823,10 @@ class db_generic_relationship_many_scalar extends db_generic_relationship {
 		}
 
 		return array_column($links, $this->target);
+	}
+
+	public function getReturnType() : string {
+		return 'scalar[]';
 	}
 }
 
