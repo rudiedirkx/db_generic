@@ -1,0 +1,13 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^If condition is always false\.$#'
+			identifier: if.alwaysFalse
+			count: 1
+			path: src/PhpStan/AroPropertyExtension.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between class\-string and ''\-'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: src/PhpStan/AroPropertyExtension.php

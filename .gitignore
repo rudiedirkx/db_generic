@@ -1,1 +1,4 @@
 /vendor/
+/composer.lock
+/test/stuff.sqlite3
+/.phpunit.cache/

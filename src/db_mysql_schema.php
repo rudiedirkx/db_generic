@@ -1,153 +1,19 @@
 <?php
 
-class db_mysql extends db_generic {
+trait db_mysql_schema {
 
-	protected $database = '';
-
-	public $quoteColumn = '';
-	public $quoteTable = '';
-
-	protected function __construct( $params ) {
-		$this->params = $params;
-	}
-
-	public function connect() {
-		if ( $this->params === false ) return;
-
-		$this->db = mysqli_init();
-
-		isset($this->params['timeout']) and $this->db->options(MYSQLI_OPT_CONNECT_TIMEOUT, $this->params['timeout']);
-		$this->db->options(MYSQLI_OPT_INT_AND_FLOAT_NATIVE, true);
-		$this->db->options(MYSQLI_SET_CHARSET_NAME, 'utf8');
-
-		$this->database = self::option($this->params, 'db', self::option($this->params, 'database', ''));
-
-		$args = array(
-			self::option($this->params, 'host', ini_get('mysqli.default_host')),
-			self::option($this->params, 'user', ini_get('mysqli.default_user')),
-			self::option($this->params, 'pass', ini_get('mysqli.default_pw')),
-			$this->database,
-		);
-		if ( isset($this->params['port']) || isset($this->params['socket']) || isset($this->params['flags']) ) {
-			$args[] = self::option($this->params, 'port', ini_get('mysqli.default_port'));
-
-			if ( isset($this->params['socket']) || isset($this->params['flags']) ) {
-				$args[] = self::option($this->params, 'socket', '');
-
-				isset($this->params['flags']) and $args[] = $this->params['flags'];
-			}
-		}
-
-		@call_user_func_array(array($this->db, 'real_connect'), $args);
-
-		if ( $this->db->connect_errno ) {
-			return $this->except('', $this->db->connect_error, $this->db->connect_errno);
-		}
-
-		$params = $this->params;
-		$this->params = false;
-		$this->postConnect($params);
-	}
-
-	protected function postConnect( $params ) {
-		$this->execute("SET NAMES 'utf8' COLLATE 'utf8_general_ci'");
-	}
-
-	public function connected() {
-		try {
-			return $this->db && is_object(@$this->query('SELECT USER()'));
-		}
-		catch ( Exception $ex ) {}
-
-		return false;
-	}
-
-
-	public function quoteColumn( $column ) {
-		return "$this->quoteColumn$column$this->quoteColumn";
-	}
-
-	public function quoteTable( $table ) {
-		return "$this->quoteTable$table$this->quoteTable";
-	}
-
+	public string $quoteColumn = '';
+	public string $quoteTable = '';
 
 	public function enableForeignKeys() {
 	}
 
-
-	public function begin() {
-		return $this->execute('BEGIN');
+	protected function quoteColumn( string $column ) : string {
+		return "$this->quoteColumn$column$this->quoteColumn";
 	}
 
-	public function commit() {
-		return $this->execute('COMMIT');
-	}
-
-	public function rollback() {
-		return $this->execute('ROLLBACK');
-	}
-
-
-	public function query( $query, $params = array() ) {
-		$this->connect();
-
-		$query = $this->replaceholders($query, $params);
-		$_time = microtime(1);
-
-		try {
-			$q = @$this->db->query($query);
-			if ( !$q ) {
-				return $this->except($query, $this->error());
-			}
-			else {
-				$this->logQuery($query, $_time);
-			}
-		}
-		catch ( Exception $ex ) {
-			$this->logQuery($query, $_time, $ex->getMessage());
-			return $this->except($query, $ex->getMessage());
-		}
-
-		return $q;
-	}
-
-	public function execute( $query, $params = array() ) {
-		$ok = $this->query($query, $params);
-		return $this->returnAffectedRows ? $this->affected_rows() : $ok;
-	}
-
-	public function error() {
-		$this->connect();
-		return $this->db->error;
-	}
-
-	public function errno() {
-		$this->connect();
-		return $this->db->errno;
-	}
-
-	public function affected_rows() {
-		$this->connect();
-		return $this->db->affected_rows;
-	}
-
-	public function insert_id() {
-		$this->connect();
-		return $this->db->insert_id;
-	}
-
-	public function escapeValue( $value ) {
-		$this->connect();
-		return $this->db->real_escape_string((string)$value);
-	}
-
-	public function escapeTable( $value ) {
-		return $value;
-	}
-
-	public function escapeColumn( $value ) {
-		return $value;
+	protected function quoteTable( string $table ) : string {
+		return "$this->quoteTable$table$this->quoteTable";
 	}
 
 	public function tables() {
@@ -155,13 +21,13 @@ class db_mysql extends db_generic {
 
 		if ( empty($cache) ) {
 			$this->connect();
-			$cache = $this->fetch_by_field('show full tables from ' . $this->database . ' where Table_type = ?', 'Tables_in_' . $this->database, array('BASE TABLE'))->all();
+			$cache = $this->fetch_by_field('show full tables from ' . $this->database . ' where Table_type = ?', 'Tables_in_' . $this->database, array('BASE TABLE'));
 		}
 
 		return $cache;
 	}
 
-	public function afterCreateTable( $tableName, $tableDefinition ) {
+	public function afterCreateTable( string $tableName, mixed $tableDefinition ) : bool {
 		$alters = [];
 		foreach ( $tableDefinition['columns'] as $columnName => $columnDefinition ) {
 			if ( isset($columnDefinition['references']) ) {
@@ -182,7 +48,7 @@ class db_mysql extends db_generic {
 
 		if ( !isset($cache[$tableName]) ) {
 			$this->connect();
-			$cache[$tableName] = $this->fetch_by_field('EXPLAIN ' . $this->escapeAndQuoteTable($tableName), 'Field')->all();
+			$cache[$tableName] = $this->fetch_by_field('EXPLAIN ' . $this->escapeAndQuoteTable($tableName), 'Field');
 		}
 
 		return $cache[$tableName];
@@ -200,7 +66,7 @@ class db_mysql extends db_generic {
 		// can be empty: array()
 		if ( null !== $columnDefinition ) {
 			// column exists -> fail
-			if ( $column && !$returnSQL ) {
+			if ( $column && !$returnSQL ) { // @phpstan-ignore booleanNot.alwaysTrue
 				return null;
 			}
 
@@ -281,7 +147,11 @@ class db_mysql extends db_generic {
 		return $column;
 	}
 
-	protected function foreignKeyClause( $fromColumn, array $references ) {
+	/**
+	 * @param string $fromColumn
+	 * @param list<string> $references
+	 */
+	protected function foreignKeyClause( $fromColumn, array $references ) : string {
 		list($toTable, $toColumn, $onDelete) = array_merge($references, ['RESTRICT']);
 		return 'ADD FOREIGN KEY (' . $this->escapeAndQuoteColumn($fromColumn) . ') REFERENCES ' . $this->escapeAndQuoteTable($toTable) . ' (' . $this->escapeAndQuoteColumn($toColumn) . ') ON DELETE ' . $onDelete;
 	}
@@ -291,7 +161,7 @@ class db_mysql extends db_generic {
 
 		if ( !isset($cache[$tableName]) ) {
 			$table = $this->escapeAndQuoteTable($tableName);
-			$cache[$tableName] = $this->fetch_by_field("show index from $table", 'Key_name')->all();
+			$cache[$tableName] = $this->fetch_by_field("show index from $table", 'Key_name');
 		}
 
 		return $cache[$tableName];
@@ -335,31 +205,3 @@ class db_mysql extends db_generic {
 	}
 
 }
-
-
-
-class db_mysql_result extends db_generic_result {
-
-	static public function make( $db, $result, $options ) {
-		return false !== $result ? new self($db, $result, $options) : false;
-	}
-
-
-	public function singleValue() {
-		$row = $this->result->fetch_row();
-		return $row ? $row[0] : false;
-	}
-
-
-	public function nextAssocArray() {
-		return $this->result->fetch_assoc();
-	}
-
-
-	public function nextNumericArray() {
-		return $this->result->fetch_row();
-	}
-
-}
-
-

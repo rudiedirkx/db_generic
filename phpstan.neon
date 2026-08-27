@@ -1,0 +1,18 @@
+includes:
+	- phpstan-baseline.neon
+parameters:
+	level: 6
+	paths:
+		- src/
+		# - test/
+	excludePaths:
+		analyse:
+			- src/db_generic_query.php
+			- src/db_generic_query_conditions.php
+	# checkExplicitMixed: true
+	# checkImplicitMixed: true
+	reportUnmatchedIgnoredErrors: false
+	ignoreErrors:
+		-
+			path: test/
+			message: "#^Method .+::relate_\\w+\\(\\) has no return type specified#"

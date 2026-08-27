@@ -1,0 +1,15 @@
+parameters:
+	rdx_dbfw:
+		aroPropertiesSchemaFile: 'inc.db-schema.php'
+
+services:
+	-
+		class: rdx\db\PhpStan\AroPropertyExtension
+		arguments:
+			schemaFile: %rdx_dbfw.aroPropertiesSchemaFile%
+		tags: [phpstan.broker.propertiesClassReflectionExtension]
+
+parametersSchema:
+	rdx_dbfw: structure([
+		aroPropertiesSchemaFile: string()
+	])

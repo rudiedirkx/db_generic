@@ -5,8 +5,10 @@ The most elegant, simple, beautiful DBAL ever.
 Drivers / adapters / databases
 ----
 
-* SQLite 3 ([via PDO](http://nl3.php.net/manual/en/ref.pdo-sqlite.php))
-* MySQLi
+* `db_sqlite`: SQLite 3 (via PDO)
+* `db_mysql`: MySQL (mysqli)
+* `db_mysql_pdo`: MySQL (via PDO)
+* `db_pgsql`: PostgreSQL (via PDO)
 
 No SQLite 2 or procedural MySQL. What is it, 2003?
 
@@ -14,15 +16,14 @@ No SQLite 2 or procedural MySQL. What is it, 2003?
 Where to start
 ----
 
-Check out the `test/` folder. It contains a few **simple** tests/examples.
+Check out the `tests/` folder. It's a PHPUnit suite that exercises the whole public API.
 
 Check out the projects where it's used. A powerful, **very useful** feature
 is the schema 'sync': create tables, columns, indexes, relations and fixtures,
 all in 1 clean array.
 
-Do it! You can create other drivers. Just extend `db_generic` and
-`db_generic_result`. You can call it `db_pgsql` =) NoSQL won't work, because
-there's no Query builder (and there won't be).
+Want another driver? Extend `db_generic` (and `db_generic_result` for the engine
+cursor). NoSQL won't work, because there's no query builder.
 
 
 Show me examples!
@@ -30,14 +31,14 @@ Show me examples!
 
 Okay.
 
-Simple select. Will return an Iterable.
+Simple select. Returns a plain array of `stdClass` rows.
 
 	$users = $db->select('users', 'lastname <> ?', array("De'sander"));
-	print_r($users); // NOT a list of users
+	var_dump($users[0]->lastname);
 
-Get the first result object.
+Just the first row, or `null`.
 
-	$user = $users->nextObject();
+	$user = $db->select_first('users', array('username' => 'sander'));
 	var_dump($user->lastname);
 
 Do a GROUP BY and get a 2D array.
@@ -49,13 +50,10 @@ Another one. Perfect for HTML `<option>`s.
 
 	$options = $db->select_fields('countries', 'code, name', array('active' => 1));
 
-Return objects in a different class. Voila, Active Records. Use `->all()` to fetch all objects.
+Raw queries return `stdClass` rows too. (For typed rows in your own class, use a model, see below.)
 
-	$sessions = $db->fetch('SELECT s.* from sessions s, people p WHERE p.access_level = ? AND p.id = s.person_id', array(
-		'params' => array(4),
-		'class' => 'UserSession',
-	))->all();
-	var_dump(get_class($sessions[0])); // UserSession
+	$sessions = $db->fetch('SELECT s.* FROM sessions s JOIN people p ON p.id = s.person_id WHERE p.access_level = 4');
+	var_dump($sessions[0]->id);
 
 More advanced conditions.
 
@@ -73,15 +71,15 @@ More advanced conditions.
 		"De'sander",
 	));
 
-And ofcourse there's updating and inserting etc.
+And of course there's updating and inserting. Write methods return `true` and throw on failure.
 
-	$bool = $db->update('people', array('enabled' => 0), array(
+	$db->update('people', array('enabled' => 0), array(
 		'last_login' => 0,
 		'favourite_pizza IS NULL',
 	));
 	$affected = $db->affected_rows();
-	
-	$bool = $db->insert('people', array(
+
+	$db->insert('people', array(
 		'name' => 'De Rudie',
 		'awesomeness' => true,
 		'favourite_pizza' => null,
@@ -106,7 +104,14 @@ And then make all procedures easier:
 	
 	$users = User::all(['country_id' => 12]); // User[]
 
-All objects are statically cached, so calling `find(X)` 6 times, takes it from the cache 5 times.
+All objects are statically cached (unless `db_generic_model::$_cache == false`), so calling
+`find(X)` 6 times, takes it from the cache 5 times.
+
+Create records:
+
+	User::insert(['username' => 'sander']); // true
+
+	$user = User::create(['username' => 'sander']); // User|null
 
 Do active things to active objects:
 
@@ -143,16 +148,16 @@ Add relationships with `relate_NAME()`:
 			return $this->to_many(Hobby::class, 'user_id');
 		}
 
-		function relate_groups() {
-			return $this->to_many_through(Group::class, 'users_groups', 'user_id', 'group_id');
-		}
-
 		function relate_num_groups() {
 			return $this->to_count(UserGroup::class, 'user_id');
 		}
 
 		function relate_group_ids() {
 			return $this->to_many_scalar('group_id', 'users_groups', 'user_id');
+		}
+
+		function relate_groups() {
+			return $this->to_many_through(Group::class, 'group_ids');
 		}
 	}
 
@@ -162,4 +167,4 @@ Add relationships with `relate_NAME()`:
 	echo $user->num_groups;
 	print_r($user->group_ids);
 
-All primary keys must be `id`. Foreign keys can be anything.
+All primary keys **must be** `id`. Foreign keys can be anything.

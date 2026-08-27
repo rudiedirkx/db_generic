@@ -1,14 +1,12 @@
 <?php
 
-require_once __DIR__ . '/db_pdo.php';
-
 class db_sqlite extends db_pdo {
 
-	protected function __construct( $params ) {
-		parent::__construct('sqlite:' . $params['database']);
+	public function __construct( string $filepath ) {
+		parent::__construct('sqlite:' . $filepath);
 	}
 
-	protected function postConnect($params) {
+	protected function postConnect() : void {
 		// Add custom functions
 		$this->db->sqliteCreateFunction('REGEXP', array(__CLASS__, 'fn_regexp'));
 		$this->db->sqliteCreateFunction('REGEXP_REPLACE', array(__CLASS__, 'fn_regexp_replace'));
@@ -32,27 +30,28 @@ class db_sqlite extends db_pdo {
 
 		// screw ACID, go SPEED!
 		$this->execute('PRAGMA synchronous=OFF');
-		$this->execute('PRAGMA journal_mode=OFF');
+		$this->execute('PRAGMA journal_mode=MEMORY');
 	}
 
-	public function addFunction($name, $callable) {
+	public function addFunction( string $name, callable $callable ) : void {
+		$this->connect();
 		$this->db->sqliteCreateFunction($name, $callable);
 	}
 
 	public function enableForeignKeys() {
-		return $this->execute('PRAGMA foreign_keys = ON');
+		$this->execute('PRAGMA foreign_keys = ON');
 	}
 
 
-	public function escapeValue( $value ) {
+	protected function escapeValue( $value ) : string {
 		return str_replace("'", "''", (string)$value);
 	}
 
-	public function quoteColumn( $column ) {
+	protected function quoteColumn( string $column ) : string {
 		return '"' . $column . '"';
 	}
 
-	public function quoteTable( $table ) {
+	protected function quoteTable( string $table ) : string {
 		return '"' . $table . '"';
 	}
 
@@ -63,7 +62,7 @@ class db_sqlite extends db_pdo {
 			$this->connect();
 			$cache = $this->select_by_field('sqlite_master', 'tbl_name', array(
 				'type' => 'table',
-			))->all();
+			));
 		}
 
 		return $cache;
@@ -74,7 +73,7 @@ class db_sqlite extends db_pdo {
 
 		if ( !isset($cache[$tableName]) ) {
 			$this->connect();
-			$cache[$tableName] = $this->fetch_by_field('PRAGMA table_info(?);', 'name', array($tableName))->all();
+			$cache[$tableName] = $this->fetch_by_field('PRAGMA table_info(?);', 'name', array($tableName));
 		}
 
 		return $cache[$tableName];
@@ -92,7 +91,7 @@ class db_sqlite extends db_pdo {
 		// can be empty: array()
 		if ( null !== $columnDefinition ) {
 			// column exists -> fail
-			if ( $column && !$returnSQL ) {
+			if ( $column && !$returnSQL ) { // @phpstan-ignore booleanNot.alwaysTrue
 				return null;
 			}
 
@@ -176,7 +175,7 @@ class db_sqlite extends db_pdo {
 			$cache[$tableName] = $this->select_by_field('sqlite_master', 'name', array(
 				'type' => 'index',
 				'tbl_name' => $tableName,
-			))->all();
+			));
 		}
 
 		return $cache[$tableName];

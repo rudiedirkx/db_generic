@@ -2,9 +2,12 @@
 
 class db_pgsql extends db_pdo {
 
-	protected $database = '';
+	protected string $database = '';
 
-	protected function __construct( $params ) {
+	/**
+	 * @param array{uri?: string, dbname?: string, pass?: string, password?: string} $params
+	 */
+	public function __construct( array $params ) {
 		if ( isset($params['uri']) ) {
 			$params = parse_url("x://" . $params['uri']);
 			unset($params['scheme']);
@@ -25,15 +28,15 @@ class db_pgsql extends db_pdo {
 	}
 
 
-	public function escapeValue( $value ) {
+	protected function escapeValue( $value ) : string {
 		return str_replace("'", "''", (string) $value);
 	}
 
-	public function quoteColumn( $column ) {
+	protected function quoteColumn( string $column ) : string {
 		return $column;
 	}
 
-	public function quoteTable( $table ) {
+	protected function quoteTable( string $table ) : string {
 		return $table;
 	}
 
@@ -47,7 +50,7 @@ class db_pgsql extends db_pdo {
 				SELECT *
 				FROM pg_catalog.pg_tables
 				WHERE 1=1
-			", 'tablename')->all();
+			", 'tablename');
 // print_r($cache);
 // exit;
 		}
@@ -64,7 +67,7 @@ class db_pgsql extends db_pdo {
 				SELECT *
 				FROM information_schema.columns
 				WHERE table_name = ?
-			", 'column_name', [$tableName])->all();
+			", 'column_name', [$tableName]);
 // print_r($cache[$tableName]);
 // exit;
 		}
@@ -84,7 +87,7 @@ class db_pgsql extends db_pdo {
 		// can be empty: array()
 		if ( null !== $columnDefinition ) {
 			// column exists -> fail
-			if ( $column && !$returnSQL ) {
+			if ( $column && !$returnSQL ) { // @phpstan-ignore booleanNot.alwaysTrue
 				return null;
 			}
 
