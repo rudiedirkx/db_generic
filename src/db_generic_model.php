@@ -14,7 +14,7 @@ abstract class db_generic_model {
 	static public $_table = '';
 
 	/** @var false|array<string, array<int, self>> */
-	final static public $_cache = [];
+	static public $_cache = [];
 
 	/** @var list<string> */
 	public array $_got = [];
