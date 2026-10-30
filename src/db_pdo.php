@@ -18,14 +18,22 @@ abstract class db_pdo extends db_generic {
 			return;
 		}
 
+		$options = [
+			PDO::ATTR_CASE => PDO::CASE_NATURAL,
+			PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+			PDO::ATTR_ORACLE_NULLS => PDO::NULL_NATURAL,
+			PDO::ATTR_STRINGIFY_FETCHES => false,
+			PDO::ATTR_EMULATE_PREPARES => false,
+		];
+
 		try {
-			$this->db = new PDO($this->pdoUri, null, null, [
-				PDO::ATTR_CASE => PDO::CASE_NATURAL,
-				PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-				PDO::ATTR_ORACLE_NULLS => PDO::NULL_NATURAL,
-				PDO::ATTR_STRINGIFY_FETCHES => false,
-				PDO::ATTR_EMULATE_PREPARES => false,
-			]);
+			// Ugly PHP 8.3 compat. Bump to PHP 8.4 someday and always use PDO::connect().
+			if ( method_exists(PDO::class, 'connect') ) {
+				$this->db = PDO::connect($this->pdoUri, null, null, $options);
+			}
+			else {
+				$this->db = new PDO($this->pdoUri, null, null, $options);
+			}
 		}
 		catch ( PDOException $ex ) {
 			$this->except('', $ex->getMessage(), $ex->getCode(), $ex);

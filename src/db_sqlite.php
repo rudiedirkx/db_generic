@@ -8,22 +8,22 @@ class db_sqlite extends db_pdo {
 
 	protected function postConnect() : void {
 		// Add custom functions
-		$this->db->sqliteCreateFunction('REGEXP', array(__CLASS__, 'fn_regexp'));
-		$this->db->sqliteCreateFunction('REGEXP_REPLACE', array(__CLASS__, 'fn_regexp_replace'));
-		$this->db->sqliteCreateFunction('IF', array(__CLASS__, 'fn_if'));
-		$this->db->sqliteCreateFunction('RAND', array(__CLASS__, 'fn_rand'));
-		$this->db->sqliteCreateFunction('CONCAT', array(__CLASS__, 'fn_concat'));
-		$this->db->sqliteCreateFunction('FROM_UNIXTIME', array(__CLASS__, 'fn_from_unixtime'));
+		$this->addFunction('REGEXP', array(__CLASS__, 'fn_regexp'));
+		$this->addFunction('REGEXP_REPLACE', array(__CLASS__, 'fn_regexp_replace'));
+		$this->addFunction('IF', array(__CLASS__, 'fn_if'));
+		$this->addFunction('RAND', array(__CLASS__, 'fn_rand'));
+		$this->addFunction('CONCAT', array(__CLASS__, 'fn_concat'));
+		$this->addFunction('FROM_UNIXTIME', array(__CLASS__, 'fn_from_unixtime'));
 
 		// Add simple functions
-		$this->db->sqliteCreateFunction('CEIL', 'ceil');
-		$this->db->sqliteCreateFunction('FLOOR', 'floor');
-		$this->db->sqliteCreateFunction('INTVAL', 'intval');
-		$this->db->sqliteCreateFunction('FLOATVAL', 'floatval');
-		$this->db->sqliteCreateFunction('LOWER', 'mb_strtolower');
-		$this->db->sqliteCreateFunction('UPPER', 'mb_strtoupper');
-		$this->db->sqliteCreateFunction('SHA1', 'sha1');
-		$this->db->sqliteCreateFunction('MD5', 'md5');
+		$this->addFunction('CEIL', 'ceil');
+		$this->addFunction('FLOOR', 'floor');
+		$this->addFunction('INTVAL', 'intval');
+		$this->addFunction('FLOATVAL', 'floatval');
+		$this->addFunction('LOWER', 'mb_strtolower');
+		$this->addFunction('UPPER', 'mb_strtoupper');
+		$this->addFunction('SHA1', 'sha1');
+		$this->addFunction('MD5', 'md5');
 
 		// set encoding
 		$this->execute('PRAGMA encoding="UTF-8"');
@@ -34,8 +34,13 @@ class db_sqlite extends db_pdo {
 	}
 
 	public function addFunction( string $name, callable $callable ) : void {
-		$this->connect();
-		$this->db->sqliteCreateFunction($name, $callable);
+		// Ugly PHP 8.3 compat. Bump to PHP 8.4 someday and always use Pdo\Sqlite::createFunction().
+		if ( $this->db instanceof Pdo\Sqlite ) {
+			$this->db->createFunction($name, $callable);
+		}
+		else {
+			$this->db->sqliteCreateFunction($name, $callable);
+		}
 	}
 
 	public function enableForeignKeys() {
