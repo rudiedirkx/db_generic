@@ -4,8 +4,10 @@ class db_generic_relationship_many extends db_generic_relationship {
 
 	protected function fetch() : mixed {
 		$where = $this->getWhereOrder([$this->foreign => $this->source->id]);
-		$options = $this->key ? ['id' => $this->key] : [];
-		$targets = call_user_func([$this->target, 'all'], $where, [], $options);
+		$targets = call_user_func([$this->target, 'all'], $where);
+		if ( $this->key ) {
+			$targets = array_column($targets, null, $this->key);
+		}
 		count($targets) and $this->loadEagers($targets);
 		return $targets;
 	}
@@ -22,10 +24,10 @@ class db_generic_relationship_many extends db_generic_relationship {
 			$object->_set($name, []);
 		}
 
-		foreach ( $targets as $target ) {
+		foreach ( $targets as $index => $target ) {
 			$object = $objects[ $ids[ $target->$foreignColumn ] ];
-			$key = $this->key ?: 'id';
-			$object->$name[ $target->$key ] = $target;
+			$key = $this->key ? $target->{$this->key} : $index;
+			$object->$name[$key] = $target;
 		}
 
 		count($targets) and $this->loadEagers($targets);

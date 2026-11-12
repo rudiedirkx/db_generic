@@ -132,10 +132,15 @@ abstract class db_generic_model {
 		$models = [];
 		foreach ( $rows as $row ) {
 			$model = new static($row);
-			if ( $cache ) {
-				$model = static::_modelToFromCache($model);
+			if ( $model->id ) {
+				if ( $cache ) {
+					$model = static::_modelToFromCache($model);
+				}
+				$models[$model->id] = $model;
 			}
-			$models[$model->id] = $model;
+			else {
+				$models[] = $model;
+			}
 		}
 		return $models;
 	}
