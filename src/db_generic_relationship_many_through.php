@@ -1,9 +1,15 @@
 <?php
 
+/**
+ * @extends db_generic_relationship<db_generic_model>
+ */
 class db_generic_relationship_many_through extends db_generic_relationship {
 
 	protected string $throughRelationship;
 
+	/**
+	 * @param class-string<db_generic_model> $targetClass
+	 */
 	public function __construct( ?db_generic_model $source, string $targetClass, string $throughRelationship ) {
 		parent::__construct($source, $targetClass, null);
 

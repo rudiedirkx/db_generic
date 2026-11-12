@@ -1,5 +1,8 @@
 <?php
 
+/**
+ * @extends db_generic_relationship<db_generic_model>
+ */
 class db_generic_relationship_first extends db_generic_relationship {
 
 	protected function fetch() : mixed {

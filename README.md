@@ -149,7 +149,7 @@ Add relationships with `relate_NAME()`:
 		}
 
 		function relate_num_groups() {
-			return $this->to_count(UserGroup::class, 'user_id');
+			return $this->to_count(UserGroup::$_table, 'user_id');
 		}
 
 		function relate_group_ids() {
@@ -167,4 +167,11 @@ Add relationships with `relate_NAME()`:
 	echo $user->num_groups;
 	print_r($user->group_ids);
 
-All primary keys **must be** `id`. Foreign keys can be anything.
+All primary keys **must be** an auto-increment `id`. Foreign keys can be anything.
+
+Tables without `id` get a keyless model: no `find()`, `create()`, `update()`, `delete()` or cache,
+only `to_one()` relationships, and results are never keyed.
+
+	class UserGroup extends db_generic_keyless_model {
+		static public $_table = 'users_groups';
+	}

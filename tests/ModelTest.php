@@ -58,6 +58,20 @@ class ModelTest extends DbTestCase {
 		$this->assertSame(4, $this->db->insert_id());
 	}
 
+	public function testInsertIgnoresIdAndTrims() : void {
+		TestUser::insert(['id' => 99, 'name' => 'Dave  ']);
+		$this->assertSame(4, $this->db->insert_id());
+		$this->assertSame('Dave', $this->db->select_one('users', 'name', ['id' => 4]));
+	}
+
+	public function testUpdateIgnoresId() : void {
+		$user = TestUser::find(1);
+		$user->update(['id' => 7, 'name' => 'Alicia']);
+		$this->assertSame(1, $user->id);
+		$this->assertSame('Alicia', $this->db->select_one('users', 'name', ['id' => 1]));
+		$this->assertSame(0, TestUser::count(['id' => 7]));
+	}
+
 	public function testCreate() : void {
 		$user = TestUser::create(['name' => 'Dave', 'age' => 50]);
 		$this->assertInstanceOf(TestUser::class, $user);

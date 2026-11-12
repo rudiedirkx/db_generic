@@ -10,9 +10,6 @@
         }
     ],
     "autoload": {
-        "psr-4": {
-            "rdx\\db\\PhpStan\\": "src/phpstan/"
-        },
         "classmap": ["src/"]
     },
     "require": {

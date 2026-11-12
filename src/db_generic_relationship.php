@@ -1,18 +1,25 @@
 <?php
 
+/**
+ * @template TSource of db_generic_keyless_model
+ */
 abstract class db_generic_relationship {
 
 	protected string $name;
 	/** @var list<string> */
 	protected array $eager = [];
-	protected ?db_generic_model $source;
+	/** @var ?TSource */
+	protected ?db_generic_keyless_model $source;
 	protected string $target;
 	protected ?string $foreign;
 	protected ?string $where = null;
 	protected ?string $order = null;
 	protected ?string $key = null;
 
-	public function __construct( ?db_generic_model $source, string $targetClass, ?string $foreignColumn ) {
+	/**
+	 * @param ?TSource $source
+	 */
+	public function __construct( ?db_generic_keyless_model $source, string $targetClass, ?string $foreignColumn ) {
 		$this->source = $source;
 		$this->target = $targetClass;
 		$this->foreign = $foreignColumn;
@@ -23,7 +30,7 @@ abstract class db_generic_relationship {
 	}
 
 	/**
-	 * @param array<db_generic_model> $objects
+	 * @param array<TSource> $objects
 	 * @return array<mixed>
 	 */
 	public function loadAll( array $objects ) : array {
@@ -31,7 +38,7 @@ abstract class db_generic_relationship {
 	}
 
 	/**
-	 * @param array<db_generic_model> $targets
+	 * @param array<db_generic_keyless_model> $targets
 	 */
 	protected function loadEagers( array $targets ) : void {
 		$target = reset($targets);
@@ -43,7 +50,7 @@ abstract class db_generic_relationship {
 	abstract protected function fetch() : mixed;
 
 	/**
-	 * @param array<db_generic_model> $objects
+	 * @param array<TSource> $objects
 	 * @return array<mixed>
 	 */
 	abstract protected function fetchAll( array $objects ) : array;
@@ -95,7 +102,7 @@ abstract class db_generic_relationship {
 	}
 
 	/**
-	 * @param array<db_generic_model> $objects
+	 * @param array<TSource> $objects
 	 * @return list<int|string>
 	 */
 	protected function getForeignIds( array $objects, string $column ) : array {

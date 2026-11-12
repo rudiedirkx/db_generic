@@ -4,10 +4,15 @@ parameters:
 
 services:
 	-
-		class: rdx\db\PhpStan\AroPropertyExtension
+		class: rdx\db\PhpStan\DbSchema
 		arguments:
 			schemaFile: %rdx_dbfw.aroPropertiesSchemaFile%
+	-
+		class: rdx\db\PhpStan\AroPropertyExtension
 		tags: [phpstan.broker.propertiesClassReflectionExtension]
+	-
+		class: rdx\db\PhpStan\ModelTableRule
+		tags: [phpstan.rules.rule]
 
 parametersSchema:
 	rdx_dbfw: structure([

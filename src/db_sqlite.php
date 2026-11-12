@@ -35,8 +35,8 @@ class db_sqlite extends db_pdo {
 
 	public function addFunction( string $name, callable $callable ) : void {
 		// Ugly PHP 8.3 compat. Bump to PHP 8.4 someday and always use Pdo\Sqlite::createFunction().
-		if ( $this->db instanceof Pdo\Sqlite ) {
-			$this->db->createFunction($name, $callable);
+		if ( $this->db instanceof Pdo\Sqlite ) { // @phpstan-ignore class.notFound
+			$this->db->createFunction($name, $callable); // @phpstan-ignore class.notFound
 		}
 		else {
 			$this->db->sqliteCreateFunction($name, $callable);
