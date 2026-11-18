@@ -241,7 +241,7 @@ abstract class db_generic_keyless_model {
 
 	/**
 	 * @param list<static> $objects
-	 * @return list<static>
+	 * @return array<mixed>
 	 */
 	static public function eager( string $name, array $objects ) : array {
 		if ( count($objects) == 0 ) {

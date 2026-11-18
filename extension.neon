@@ -11,6 +11,9 @@ services:
 		class: rdx\db\PhpStan\AroPropertyExtension
 		tags: [phpstan.broker.propertiesClassReflectionExtension]
 	-
+		class: rdx\db\PhpStan\EagerReturnTypeExtension
+		tags: [phpstan.broker.dynamicStaticMethodReturnTypeExtension]
+	-
 		class: rdx\db\PhpStan\ModelTableRule
 		tags: [phpstan.rules.rule]
 
